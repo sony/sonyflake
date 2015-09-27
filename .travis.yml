@@ -1,8 +1,11 @@
 language: go
 go:
   - 1.4
-  - tip
+  - 1.5
 sudo: false
+before_install:
+  - go get github.com/axw/gocov/gocov
+  - go get github.com/mattn/goveralls
 script:
-  - go test -v .
+  - $GOPATH/bin/goveralls -service=travis-ci
   - cd example && ./linux64_build.sh
