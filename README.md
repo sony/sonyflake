@@ -3,6 +3,7 @@ Sonyflake
 
 [![GoDoc](https://godoc.org/github.com/sony/sonyflake?status.png)](http://godoc.org/github.com/sony/sonyflake)
 [![Build Status](https://travis-ci.org/sony/sonyflake.svg?branch=master)](https://travis-ci.org/sony/sonyflake)
+[![Coverage Status](https://coveralls.io/repos/sony/sonyflake/badge.svg?branch=master&service=github)](https://coveralls.io/github/sony/sonyflake?branch=master)
 
 Sonyflake is a distributed unique ID generator inspired by [Twitter's Snowflake](https://blog.twitter.com/2010/announcing-snowflake).  
 A Sonyflake ID is composed of
