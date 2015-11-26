@@ -4,9 +4,11 @@ go:
   - 1.5
 sudo: false
 before_install:
+  - go get -u github.com/golang/lint/golint
   - go get github.com/axw/gocov/gocov
   - go get github.com/mattn/goveralls
 script:
   - test -z "`gofmt -l .`"
+  - test -z "`golint ./...`"
   - $GOPATH/bin/goveralls -service=travis-ci
   - cd example && ./linux64_build.sh
