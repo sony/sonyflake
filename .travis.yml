@@ -7,5 +7,6 @@ before_install:
   - go get github.com/axw/gocov/gocov
   - go get github.com/mattn/goveralls
 script:
+  - test -z "`gofmt -l .`"
   - $GOPATH/bin/goveralls -service=travis-ci
   - cd example && ./linux64_build.sh
