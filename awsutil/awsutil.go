@@ -57,5 +57,8 @@ func TimeDifference(server string) (time.Duration, error) {
 	}
 
 	f, err := strconv.ParseFloat(string(submatched[1]), 64)
+	if err != nil {
+		return time.Duration(0), err
+	}
 	return time.Duration(f*1000) * time.Millisecond, nil
 }
