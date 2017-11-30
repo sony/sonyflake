@@ -97,6 +97,7 @@ func (sf *Sonyflake) NextID() (uint64, error) {
 		sf.sequence = (sf.sequence + 1) & maskSequence
 		if sf.sequence == 0 {
 			sf.elapsedTime++
+			// TODO: I think it no need take sleep, the current time will catch up anyway
 			overtime := sf.elapsedTime - current
 			time.Sleep(sleepTime((overtime)))
 		}
@@ -126,8 +127,8 @@ func (sf *Sonyflake) toID() (uint64, error) {
 	}
 
 	return uint64(sf.elapsedTime)<<(BitLenSequence+BitLenMachineID) |
-		uint64(sf.sequence)<<BitLenMachineID |
-		uint64(sf.machineID), nil
+		uint64(sf.machineID)<<BitLenMachineID |
+		uint64(sf.sequence), nil
 }
 
 func privateIPv4() (net.IP, error) {
