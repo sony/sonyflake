@@ -92,15 +92,10 @@ func (sf *Sonyflake) NextID() (uint64, error) {
 	current := currentElapsedTime(sf.startTime)
 	if sf.elapsedTime < current {
 		sf.elapsedTime = current
-		sf.sequence = 0
-	} else { // sf.elapsedTime >= current
-		sf.sequence = (sf.sequence + 1) & maskSequence
-		if sf.sequence == 0 {
-			sf.elapsedTime++
-			// TODO: I think it no need take sleep, the current time will catch up anyway
-			overtime := sf.elapsedTime - current
-			time.Sleep(sleepTime((overtime)))
-		}
+	}
+	sf.sequence = (sf.sequence + 1) & maskSequence
+	if sf.sequence == 0 {
+		sf.elapsedTime++
 	}
 
 	return sf.toID()
