@@ -167,13 +167,13 @@ func Decompose(id uint64) map[string]uint64 {
 
 	msb := id >> 63
 	time := id >> (BitLenSequence + BitLenMachineID)
-	sequence := id & maskSequence >> BitLenMachineID
-	machineID := id & maskMachineID
+	machineID := id & maskMachineID >> BitLenMachineID
+	sequence := id & maskSequence
 	return map[string]uint64{
 		"id":         id,
 		"msb":        msb,
 		"time":       time,
-		"sequence":   sequence,
 		"machine-id": machineID,
+		"sequence":   sequence,
 	}
 }
