@@ -4,7 +4,7 @@ go:
   - 1.6
 sudo: false
 before_install:
-  - go get -u github.com/golang/lint/golint
+  - go get -u golang.org/x/lint/golint
   - go get github.com/axw/gocov/gocov
   - go get github.com/mattn/goveralls
 script:
