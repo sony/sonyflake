@@ -190,3 +190,25 @@ func TestNextIDError(t *testing.T) {
 		t.Errorf("time is not over")
 	}
 }
+
+func BenchmarkNextID(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = sf.NextID()
+	}
+}
+
+func BenchmarkNextID_validate(b *testing.B) {
+	m := map[uint64]struct{}{}
+	for i := 0; i < b.N; i++ {
+		id, err := sf.NextID()
+		if err != nil {
+			b.Logf("NextID returned err:%v", err)
+			b.FailNow()
+		}
+		m[id] = struct{}{}
+	}
+	if len(m) != b.N {
+		b.Logf("duplicated ids")
+		b.FailNow()
+	}
+}
