@@ -9,7 +9,7 @@ Sonyflake
 Sonyflake is a distributed unique ID generator inspired by [Twitter's Snowflake](https://blog.twitter.com/2010/announcing-snowflake).  
 
 Sonyflake focuses on lifetime and performance on many host/core environment.
-So it has a different bit assignment from Snowflake.  
+So it has a different bit assignment from Snowflake.
 A Sonyflake ID is composed of
 
     39 bits for time in units of 10 msec
