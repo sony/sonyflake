@@ -197,6 +197,7 @@ func TestNextIDError(t *testing.T) {
 // So, if you have a system that needs to generate id in application level in thread, the generated ID
 // can be sorted by those generated ids.
 // Sorted by ID will resemble as sorted by time.
+// And SonyFlake id is resemble increment id in database when you want to sort it.
 func TestSortableID(t *testing.T)  {
 	numCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(numCPU)
