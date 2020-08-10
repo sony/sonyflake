@@ -5,8 +5,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-
-	"github.com/deckarep/golang-set"
 )
 
 var sf *Sonyflake
@@ -139,16 +137,17 @@ func TestSonyflakeInParallel(t *testing.T) {
 		go generate()
 	}
 
-	set := mapset.NewSet()
+	set := make(map[uint64]struct{})
 	for i := 0; i < numID*numGenerator; i++ {
 		id := <-consumer
-		if set.Contains(id) {
-			t.Fatal("duplicated id")
-		} else {
-			set.Add(id)
+		for k := range set {
+			if k == id {
+				t.Fatal("duplicated id")
+			}
 		}
+		set[id] = struct{}{}
 	}
-	fmt.Println("number of id:", set.Cardinality())
+	fmt.Println("number of id:", len(set))
 }
 
 func TestNilSonyflake(t *testing.T) {
