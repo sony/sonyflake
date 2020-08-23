@@ -140,10 +140,8 @@ func TestSonyflakeInParallel(t *testing.T) {
 	set := make(map[uint64]struct{})
 	for i := 0; i < numID*numGenerator; i++ {
 		id := <-consumer
-		for k := range set {
-			if k == id {
-				t.Fatal("duplicated id")
-			}
+		if _, ok := set[id]; ok {
+			t.Fatal("duplicated id")
 		}
 		set[id] = struct{}{}
 	}
