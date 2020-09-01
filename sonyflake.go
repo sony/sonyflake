@@ -92,14 +92,10 @@ func (sf *Sonyflake) NextID() (uint64, error) {
 	current := currentElapsedTime(sf.startTime)
 	if sf.elapsedTime < current {
 		sf.elapsedTime = current
-		sf.sequence = 0
-	} else { // sf.elapsedTime >= current
-		sf.sequence = (sf.sequence + 1) & maskSequence
-		if sf.sequence == 0 {
-			sf.elapsedTime++
-			overtime := sf.elapsedTime - current
-			time.Sleep(sleepTime((overtime)))
-		}
+	}
+	sf.sequence = (sf.sequence + 1) & maskSequence
+	if sf.sequence == 0 {
+		sf.elapsedTime++
 	}
 
 	return sf.toID()
@@ -126,8 +122,8 @@ func (sf *Sonyflake) toID() (uint64, error) {
 	}
 
 	return uint64(sf.elapsedTime)<<(BitLenSequence+BitLenMachineID) |
-		uint64(sf.sequence)<<BitLenMachineID |
-		uint64(sf.machineID), nil
+		uint64(sf.machineID)<<BitLenMachineID |
+		uint64(sf.sequence), nil
 }
 
 func privateIPv4() (net.IP, error) {
@@ -171,13 +167,13 @@ func Decompose(id uint64) map[string]uint64 {
 
 	msb := id >> 63
 	time := id >> (BitLenSequence + BitLenMachineID)
-	sequence := id & maskSequence >> BitLenMachineID
-	machineID := id & maskMachineID
+	machineID := id & maskMachineID >> BitLenMachineID
+	sequence := id & maskSequence
 	return map[string]uint64{
 		"id":         id,
 		"msb":        msb,
 		"time":       time,
-		"sequence":   sequence,
 		"machine-id": machineID,
+		"sequence":   sequence,
 	}
 }
