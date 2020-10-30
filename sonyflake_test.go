@@ -1,10 +1,15 @@
 package sonyflake
 
 import (
+	"bytes"
 	"fmt"
+	"net"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/sony/sonyflake/mock"
+	"github.com/sony/sonyflake/types"
 )
 
 var sf *Sonyflake
@@ -23,7 +28,7 @@ func init() {
 
 	startTime = toSonyflakeTime(st.StartTime)
 
-	ip, _ := lower16BitPrivateIP()
+	ip, _ := lower16BitPrivateIP(defaultInterfaceAddrs)
 	machineID = uint64(ip)
 }
 
@@ -185,5 +190,92 @@ func TestNextIDError(t *testing.T) {
 	_, err := sf.NextID()
 	if err == nil {
 		t.Errorf("time is not over")
+	}
+}
+
+func TestPrivateIPv4(t *testing.T) {
+	testCases := []struct {
+		description    string
+		expected       net.IP
+		interfaceAddrs types.InterfaceAddrs
+		error          string
+	}{
+		{
+			description:    "InterfaceAddrs returns an error",
+			expected:       nil,
+			interfaceAddrs: mock.NewFailingInterfaceAddrs(),
+			error:          "test error",
+		},
+		{
+			description:    "InterfaceAddrs returns an empty or nil list",
+			expected:       nil,
+			interfaceAddrs: mock.NewNilInterfaceAddrs(),
+			error:          "no private ip address",
+		},
+		{
+			description:    "InterfaceAddrs returns one or more IPs",
+			expected:       net.IP{192, 168, 0, 1},
+			interfaceAddrs: mock.NewSuccessfulInterfaceAddrs(),
+			error:          "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := privateIPv4(tc.interfaceAddrs)
+
+			if (err != nil) && (tc.error == "") {
+				t.Errorf("expected no error, but got: %s", err)
+				return
+			} else if (err != nil) && (tc.error != "") {
+				return
+			}
+
+			if bytes.Equal(actual, tc.expected) {
+				return
+			} else {
+				t.Errorf("error: expected: %s, but got: %s", tc.expected, actual)
+			}
+		})
+	}
+}
+
+func TestLower16BitPrivateIP(t *testing.T) {
+	testCases := []struct {
+		description    string
+		expected       uint16
+		interfaceAddrs types.InterfaceAddrs
+		error          string
+	}{
+		{
+			description:    "InterfaceAddrs returns an empty or nil list",
+			expected:       0,
+			interfaceAddrs: mock.NewNilInterfaceAddrs(),
+			error:          "no private ip address",
+		},
+		{
+			description:    "InterfaceAddrs returns one or more IPs",
+			expected:       1,
+			interfaceAddrs: mock.NewSuccessfulInterfaceAddrs(),
+			error:          "",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			actual, err := lower16BitPrivateIP(tc.interfaceAddrs)
+
+			if (err != nil) && (tc.error == "") {
+				t.Errorf("expected no error, but got: %s", err)
+				return
+			} else if (err != nil) && (tc.error != "") {
+				return
+			}
+
+			if actual == tc.expected {
+				return
+			} else {
+				t.Errorf("error: expected: %v, but got: %v", tc.expected, actual)
+			}
+		})
 	}
 }
