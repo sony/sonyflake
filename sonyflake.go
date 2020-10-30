@@ -11,6 +11,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/sony/sonyflake/types"
 )
 
 // These constants are the bit lengths of Sonyflake ID parts.
@@ -49,6 +51,8 @@ type Sonyflake struct {
 	machineID   uint16
 }
 
+var defaultInterfaceAddrs = net.InterfaceAddrs
+
 // NewSonyflake returns a new Sonyflake configured with the given Settings.
 // NewSonyflake returns nil in the following cases:
 // - Settings.StartTime is ahead of the current time.
@@ -70,7 +74,7 @@ func NewSonyflake(st Settings) *Sonyflake {
 
 	var err error
 	if st.MachineID == nil {
-		sf.machineID, err = lower16BitPrivateIP()
+		sf.machineID, err = lower16BitPrivateIP(defaultInterfaceAddrs)
 	} else {
 		sf.machineID, err = st.MachineID()
 	}
@@ -130,8 +134,8 @@ func (sf *Sonyflake) toID() (uint64, error) {
 		uint64(sf.machineID), nil
 }
 
-func privateIPv4() (net.IP, error) {
-	as, err := net.InterfaceAddrs()
+func privateIPv4(interfaceAddrs types.InterfaceAddrs) (net.IP, error) {
+	as, err := interfaceAddrs()
 	if err != nil {
 		return nil, err
 	}
@@ -155,8 +159,8 @@ func isPrivateIPv4(ip net.IP) bool {
 		(ip[0] == 10 || ip[0] == 172 && (ip[1] >= 16 && ip[1] < 32) || ip[0] == 192 && ip[1] == 168)
 }
 
-func lower16BitPrivateIP() (uint16, error) {
-	ip, err := privateIPv4()
+func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (uint16, error) {
+	ip, err := privateIPv4(interfaceAddrs)
 	if err != nil {
 		return 0, err
 	}
