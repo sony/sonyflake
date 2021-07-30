@@ -2,6 +2,7 @@ package sonyflake
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -185,5 +186,77 @@ func TestNextIDError(t *testing.T) {
 	_, err := sf.NextID()
 	if err == nil {
 		t.Errorf("time is not over")
+	}
+}
+
+func TestReproducibleIDs(t *testing.T) {
+	now := time.Date(2021, 7, 29, 1, 2, 4, 8, time.UTC)
+	flake := NewSonyflake(Settings{
+		StartTime: now.Add(-time.Second),
+		MachineID: func() (uint16, error) {
+			return 127, nil
+		},
+	})
+
+	// Ensure we exhaust the sequence range for the current timestamp
+	const numIDs = 1<<BitLenSequence + 1
+
+	// sample the 2 first and the 2 last IDs in the range
+	var id0, id1, idNMinusOne, idN map[string]uint64
+	for i := 0; i < numIDs; i++ {
+		id, err := flake.NextReproducibleID(now)
+		if err != nil {
+			panic(err)
+		}
+		switch i {
+		case 0:
+			id0 = Decompose(id)
+		case 1:
+			id1 = Decompose(id)
+		case numIDs - 2:
+			idNMinusOne = Decompose(id)
+		case numIDs - 1:
+			idN = Decompose(id)
+		}
+	}
+
+	if !reflect.DeepEqual(id0, map[string]uint64{
+		"id":         1677721727,
+		"msb":        0,
+		"time":       100,
+		"sequence":   0,
+		"machine-id": 127,
+	}) {
+		t.Errorf("id0 = %v", id0)
+	}
+
+	if !reflect.DeepEqual(id1, map[string]uint64{
+		"id":         1677787263,
+		"msb":        0,
+		"time":       100,
+		"sequence":   1,
+		"machine-id": 127,
+	}) {
+		t.Errorf("id1 = %v", id1)
+	}
+
+	if !reflect.DeepEqual(idNMinusOne, map[string]uint64{
+		"id":         1694433407,
+		"msb":        0,
+		"time":       100,
+		"sequence":   255,
+		"machine-id": 127,
+	}) {
+		t.Errorf("idNMinusOne = %v", idNMinusOne)
+	}
+
+	if !reflect.DeepEqual(idN, map[string]uint64{
+		"id":         1694498943,
+		"msb":        0,
+		"time":       101,
+		"sequence":   0, // note that sequence have been exhausted for "now" and "time" advanced
+		"machine-id": 127,
+	}) {
+		t.Errorf("idN = %v", idN)
 	}
 }
