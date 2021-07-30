@@ -84,21 +84,40 @@ func NewSonyflake(st Settings) *Sonyflake {
 // NextID generates a next unique ID.
 // After the Sonyflake time overflows, NextID returns an error.
 func (sf *Sonyflake) NextID() (uint64, error) {
-	const maskSequence = uint16(1<<BitLenSequence - 1)
-
 	sf.mutex.Lock()
 	defer sf.mutex.Unlock()
 
-	current := currentElapsedTime(sf.startTime)
+	return sf.nextIDInternal(time.Now())
+}
+
+// NextReproducibleID generates the next ID for a given timestamp.
+// This API is required if you need to generate reproducible IDs.
+// The IDs generated via this API are reproducible assuming that there
+// is only 1 thread using the Sonyflake instance and that it is only calling
+// NextReproducibleID and not NextID.
+func (sf *Sonyflake) NextReproducibleID(now time.Time) (uint64, error) {
+	sf.mutex.Lock()
+	defer sf.mutex.Unlock()
+
+	return sf.nextIDInternal(now)
+}
+
+// caller must hold sf.mutex
+func (sf *Sonyflake) nextIDInternal(now time.Time) (uint64, error) {
+	const maskSequence = uint16(1<<BitLenSequence - 1)
+
+	current := currentElapsedTime(now, sf.startTime)
 	if sf.elapsedTime < current {
+		// clock has progressed to a new timestamp
 		sf.elapsedTime = current
 		sf.sequence = 0
-	} else { // sf.elapsedTime >= current
+	} else {
+		// clock has not progressed since last check (could even have gone backwards)
 		sf.sequence = (sf.sequence + 1) & maskSequence
 		if sf.sequence == 0 {
 			sf.elapsedTime++
 			overtime := sf.elapsedTime - current
-			time.Sleep(sleepTime((overtime)))
+			time.Sleep(sleepTime(now, overtime))
 		}
 	}
 
@@ -111,13 +130,13 @@ func toSonyflakeTime(t time.Time) int64 {
 	return t.UTC().UnixNano() / sonyflakeTimeUnit
 }
 
-func currentElapsedTime(startTime int64) int64 {
-	return toSonyflakeTime(time.Now()) - startTime
+func currentElapsedTime(now time.Time, startTime int64) int64 {
+	return toSonyflakeTime(now) - startTime
 }
 
-func sleepTime(overtime int64) time.Duration {
+func sleepTime(now time.Time, overtime int64) time.Duration {
 	return time.Duration(overtime)*10*time.Millisecond -
-		time.Duration(time.Now().UTC().UnixNano()%sonyflakeTimeUnit)*time.Nanosecond
+		time.Duration(now.UTC().UnixNano()%sonyflakeTimeUnit)*time.Nanosecond
 }
 
 func (sf *Sonyflake) toID() (uint64, error) {
