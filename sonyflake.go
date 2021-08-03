@@ -49,6 +49,14 @@ type Sonyflake struct {
 	machineID   uint16
 }
 
+type Buffer struct {
+	// Timestamp in units of 10ms
+	Time      uint64
+	Sequence  uint8
+	MSB       uint8
+	MachineID uint16
+}
+
 // NewSonyflake returns a new Sonyflake configured with the given Settings.
 // NewSonyflake returns nil in the following cases:
 // - Settings.StartTime is ahead of the current time.
@@ -165,7 +173,22 @@ func lower16BitPrivateIP() (uint16, error) {
 }
 
 // Decompose returns a set of Sonyflake ID parts.
+// For optimal performance use DecomposeToBuffer instead.
 func Decompose(id uint64) map[string]uint64 {
+	buf := Buffer{}
+	DecomposeToBuffer(id, &buf)
+	return map[string]uint64{
+		"id":         id,
+		"msb":        uint64(buf.MSB),
+		"time":       buf.Time,
+		"sequence":   uint64(buf.Sequence),
+		"machine-id": uint64(buf.MachineID),
+	}
+}
+
+// DecomposeToBuffer writes the constituent parts of the Sonyflake ID
+// to the provided buffer.
+func DecomposeToBuffer(id uint64, buf *Buffer) {
 	const maskSequence = uint64((1<<BitLenSequence - 1) << BitLenMachineID)
 	const maskMachineID = uint64(1<<BitLenMachineID - 1)
 
@@ -173,11 +196,9 @@ func Decompose(id uint64) map[string]uint64 {
 	time := id >> (BitLenSequence + BitLenMachineID)
 	sequence := id & maskSequence >> BitLenMachineID
 	machineID := id & maskMachineID
-	return map[string]uint64{
-		"id":         id,
-		"msb":        msb,
-		"time":       time,
-		"sequence":   sequence,
-		"machine-id": machineID,
-	}
+
+	buf.Time = time
+	buf.Sequence = uint8(sequence)
+	buf.MSB = uint8(msb)
+	buf.MachineID = uint16(machineID)
 }
