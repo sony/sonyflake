@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+var (
+	ErrInvalidStartTime     = errors.New("StartTime cannot be after current time")
+	ErrCheckMachineIDFailed = errors.New("CheckMachineID call returned false")
+)
+
 // These constants are the bit lengths of Sonyflake ID parts.
 const (
 	BitLenTime      = 39                               // bit length of time
@@ -62,13 +67,13 @@ type Buffer struct {
 // - Settings.StartTime is ahead of the current time.
 // - Settings.MachineID returns an error.
 // - Settings.CheckMachineID returns false.
-func NewSonyflake(st Settings) *Sonyflake {
+func NewSonyflake(st Settings) (*Sonyflake, error) {
 	sf := new(Sonyflake)
 	sf.mutex = new(sync.Mutex)
 	sf.sequence = uint16(1<<BitLenSequence - 1)
 
 	if st.StartTime.After(time.Now()) {
-		return nil
+		return nil, ErrInvalidStartTime
 	}
 	if st.StartTime.IsZero() {
 		sf.startTime = toSonyflakeTime(time.Date(2014, 9, 1, 0, 0, 0, 0, time.UTC))
@@ -82,11 +87,14 @@ func NewSonyflake(st Settings) *Sonyflake {
 	} else {
 		sf.machineID, err = st.MachineID()
 	}
-	if err != nil || (st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID)) {
-		return nil
+	if err != nil {
+		return nil, err
+	}
+	if st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID) {
+		return nil, ErrCheckMachineIDFailed
 	}
 
-	return sf
+	return sf, nil
 }
 
 // NextID generates a next unique ID.
