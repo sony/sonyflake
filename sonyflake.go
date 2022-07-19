@@ -83,7 +83,7 @@ func NewSonyflake(st Settings) *Sonyflake {
 
 // NextID generates a next unique ID.
 // After the Sonyflake time overflows, NextID returns an error.
-func (sf *Sonyflake) NextID() (uint64, error) {
+func (sf *Sonyflake) NextID() (int64, error) {
 	const maskSequence = uint16(1<<BitLenSequence - 1)
 
 	sf.mutex.Lock()
@@ -120,14 +120,12 @@ func sleepTime(overtime int64) time.Duration {
 		time.Duration(time.Now().UTC().UnixNano()%sonyflakeTimeUnit)*time.Nanosecond
 }
 
-func (sf *Sonyflake) toID() (uint64, error) {
+func (sf *Sonyflake) toID() (int64, error) {
 	if sf.elapsedTime >= 1<<BitLenTime {
 		return 0, errors.New("over the time limit")
 	}
 
-	return uint64(sf.elapsedTime)<<(BitLenSequence+BitLenMachineID) |
-		uint64(sf.sequence)<<BitLenMachineID |
-		uint64(sf.machineID), nil
+	return int64(sf.elapsedTime)<<(BitLenSequence+BitLenMachineID) | int64(sf.sequence)<<BitLenMachineID | int64(sf.machineID), nil
 }
 
 func privateIPv4() (net.IP, error) {
