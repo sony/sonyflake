@@ -71,6 +71,10 @@ func (sf *Sonyflake) NextID() (uint64, error)
 NextID can continue to generate IDs for about 174 years from StartTime.
 But after the Sonyflake time is over the limit, NextID returns an error.
 
+> **Note:**
+> Sonyflake currently does not use the most significant bit of IDs,
+> so you can convert Sonyflake IDs from `uint64` to `int64` safely.
+
 AWS VPC and Docker
 ------------------
 
