@@ -187,3 +187,9 @@ func TestNextIDError(t *testing.T) {
 		t.Errorf("time is not over")
 	}
 }
+
+func TestSonyflakeTimeUnit(t *testing.T) {
+	if time.Duration(sonyflakeTimeUnit) != 10*time.Millisecond {
+		t.Errorf("unexpected time unit")
+	}
+}

@@ -1,9 +1,10 @@
 // Package sonyflake implements Sonyflake, a distributed unique ID generator inspired by Twitter's Snowflake.
 //
 // A Sonyflake ID is composed of
-//     39 bits for time in units of 10 msec
-//      8 bits for a sequence number
-//     16 bits for a machine id
+//
+//	39 bits for time in units of 10 msec
+//	 8 bits for a sequence number
+//	16 bits for a machine id
 package sonyflake
 
 import (
@@ -116,8 +117,8 @@ func currentElapsedTime(startTime int64) int64 {
 }
 
 func sleepTime(overtime int64) time.Duration {
-	return time.Duration(overtime)*10*time.Millisecond -
-		time.Duration(time.Now().UTC().UnixNano()%sonyflakeTimeUnit)*time.Nanosecond
+	return time.Duration(overtime*sonyflakeTimeUnit) -
+		time.Duration(time.Now().UTC().UnixNano()%sonyflakeTimeUnit)
 }
 
 func (sf *Sonyflake) toID() (uint64, error) {
