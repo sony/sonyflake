@@ -41,34 +41,28 @@ func nextID(t *testing.T) uint64 {
 }
 
 func TestSonyflakeOnce(t *testing.T) {
-	sleepTime := uint64(50)
-	time.Sleep(time.Duration(sleepTime) * 10 * time.Millisecond)
+	sleepTime := time.Duration(50 * sonyflakeTimeUnit)
+	time.Sleep(sleepTime)
 
 	id := nextID(t)
-	parts := Decompose(id)
 
-	actualMSB := parts["msb"]
-	if actualMSB != 0 {
-		t.Errorf("unexpected msb: %d", actualMSB)
-	}
-
-	actualTime := parts["time"]
-	if actualTime < sleepTime || actualTime > sleepTime+1 {
+	actualTime := ElapsedTime(id)
+	if actualTime < sleepTime || actualTime > sleepTime+sonyflakeTimeUnit {
 		t.Errorf("unexpected time: %d", actualTime)
 	}
 
-	actualSequence := parts["sequence"]
+	actualSequence := SequenceNumber(id)
 	if actualSequence != 0 {
 		t.Errorf("unexpected sequence: %d", actualSequence)
 	}
 
-	actualMachineID := parts["machine-id"]
+	actualMachineID := MachineID(id)
 	if actualMachineID != machineID {
 		t.Errorf("unexpected machine id: %d", actualMachineID)
 	}
 
 	fmt.Println("sonyflake id:", id)
-	fmt.Println("decompose:", parts)
+	fmt.Println("decompose:", Decompose(id))
 }
 
 func currentTime() int64 {
@@ -277,5 +271,11 @@ func TestLower16BitPrivateIP(t *testing.T) {
 				t.Errorf("error: expected: %v, but got: %v", tc.expected, actual)
 			}
 		})
+	}
+}
+
+func TestSonyflakeTimeUnit(t *testing.T) {
+	if time.Duration(sonyflakeTimeUnit) != 10*time.Millisecond {
+		t.Errorf("unexpected time unit")
 	}
 }
