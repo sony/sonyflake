@@ -7,8 +7,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/deckarep/golang-set"
 )
 
 var sf *Sonyflake
@@ -40,34 +38,28 @@ func nextID(t *testing.T) uint64 {
 }
 
 func TestSonyflakeOnce(t *testing.T) {
-	sleepTime := uint64(50)
-	time.Sleep(time.Duration(sleepTime) * 10 * time.Millisecond)
+	sleepTime := time.Duration(50 * sonyflakeTimeUnit)
+	time.Sleep(sleepTime)
 
 	id := nextID(t)
-	parts := Decompose(id)
 
-	actualMSB := parts["msb"]
-	if actualMSB != 0 {
-		t.Errorf("unexpected msb: %d", actualMSB)
-	}
-
-	actualTime := parts["time"]
-	if actualTime < sleepTime || actualTime > sleepTime+1 {
+	actualTime := ElapsedTime(id)
+	if actualTime < sleepTime || actualTime > sleepTime+sonyflakeTimeUnit {
 		t.Errorf("unexpected time: %d", actualTime)
 	}
 
-	actualSequence := parts["sequence"]
+	actualSequence := SequenceNumber(id)
 	if actualSequence != 0 {
 		t.Errorf("unexpected sequence: %d", actualSequence)
 	}
 
-	actualMachineID := parts["machine-id"]
+	actualMachineID := MachineID(id)
 	if actualMachineID != machineID {
 		t.Errorf("unexpected machine id: %d", actualMachineID)
 	}
 
 	fmt.Println("sonyflake id:", id)
-	fmt.Println("decompose:", parts)
+	fmt.Println("decompose:", Decompose(id))
 }
 
 func currentTime() int64 {
@@ -141,16 +133,15 @@ func TestSonyflakeInParallel(t *testing.T) {
 		go generate()
 	}
 
-	set := mapset.NewSet()
+	set := make(map[uint64]struct{})
 	for i := 0; i < numID*numGenerator; i++ {
 		id := <-consumer
-		if set.Contains(id) {
+		if _, ok := set[id]; ok {
 			t.Fatal("duplicated id")
-		} else {
-			set.Add(id)
 		}
+		set[id] = struct{}{}
 	}
-	fmt.Println("number of id:", set.Cardinality())
+	fmt.Println("number of id:", len(set))
 }
 
 func TestNilSonyflake(t *testing.T) {
@@ -267,5 +258,11 @@ func TestSortableID(t *testing.T)  {
 			t.Error("recent generated id is lower than previous generated", uuids.ids[times[i-1]], "vs", uuids.ids[times[i]])
 			t.Fail()
 		}
+	}
+}
+
+func TestSonyflakeTimeUnit(t *testing.T) {
+	if time.Duration(sonyflakeTimeUnit) != 10*time.Millisecond {
+		t.Errorf("unexpected time unit")
 	}
 }
