@@ -165,15 +165,33 @@ func lower16BitPrivateIP() (uint16, error) {
 	return uint16(ip[2])<<8 + uint16(ip[3]), nil
 }
 
+// ElapsedTime returns the elapsed time when the given Sonyflake ID was generated.
+func ElapsedTime(id uint64) time.Duration {
+	return time.Duration(elapsedTime(id) * sonyflakeTimeUnit)
+}
+
+func elapsedTime(id uint64) uint64 {
+	return id >> (BitLenSequence + BitLenMachineID)
+}
+
+// SequenceNumber returns the sequence number of a Sonyflake ID.
+func SequenceNumber(id uint64) uint64 {
+	const maskSequence = uint64((1<<BitLenSequence - 1) << BitLenMachineID)
+	return id & maskSequence >> BitLenMachineID
+}
+
+// MachineID returns the machine ID of a Sonyflake ID.
+func MachineID(id uint64) uint64 {
+	const maskMachineID = uint64(1<<BitLenMachineID - 1)
+	return id & maskMachineID
+}
+
 // Decompose returns a set of Sonyflake ID parts.
 func Decompose(id uint64) map[string]uint64 {
-	const maskSequence = uint64((1<<BitLenSequence - 1) << BitLenMachineID)
-	const maskMachineID = uint64(1<<BitLenMachineID - 1)
-
 	msb := id >> 63
-	time := id >> (BitLenSequence + BitLenMachineID)
-	sequence := id & maskSequence >> BitLenMachineID
-	machineID := id & maskMachineID
+	time := elapsedTime(id)
+	sequence := SequenceNumber(id)
+	machineID := MachineID(id)
 	return map[string]uint64{
 		"id":         id,
 		"msb":        msb,
