@@ -3,6 +3,8 @@ package sonyflake
 import (
 	"fmt"
 	"runtime"
+	"sort"
+	"sync"
 	"testing"
 	"time"
 )
@@ -179,6 +181,83 @@ func TestNextIDError(t *testing.T) {
 	_, err := sf.NextID()
 	if err == nil {
 		t.Errorf("time is not over")
+	}
+}
+
+// TestSortableID will test if the generated ID is always sortable even when you run in Go routine.
+// So, if you have a system that needs to generate id in application level in thread, the generated ID
+// can be sorted by those generated ids.
+// Sorted by ID will resemble as sorted by time.
+// And SonyFlake id is resemble increment id in database when you want to sort it.
+func TestSortableID(t *testing.T)  {
+	numCPU := runtime.NumCPU()
+	runtime.GOMAXPROCS(numCPU)
+	fmt.Println("number of cpu:", numCPU)
+
+	var st Settings
+	st.StartTime = time.Now()
+
+	generator := NewSonyflake(st)
+	if generator == nil {
+		t.Error(fmt.Errorf("generator is nil"))
+		t.Fail()
+		return
+	}
+
+	type uids struct {
+		mutex *sync.RWMutex
+		ids   map[int64]uint64
+	}
+
+	var (
+		uuids = &uids{
+			mutex: new(sync.RWMutex),
+			ids:   make(map[int64]uint64),
+		}
+
+		N  = 10001
+		wg = new(sync.WaitGroup)
+	)
+
+	wg.Add(N)
+	for i := 0; i < N; i++ {
+		go func(x int, gen *Sonyflake, ids *uids) {
+			ids.mutex.Lock()
+			defer func() {
+				ids.mutex.Unlock()
+				wg.Done()
+			}()
+
+
+			id, err := gen.NextID()
+			if err != nil {
+				t.Error(err.Error())
+				t.Fail()
+			}
+
+			t := time.Now().UnixNano()
+
+			ids.ids[t] = id
+
+		}(i, generator, uuids)
+	}
+	wg.Wait()
+
+	times := make([]int64, 0)
+	for k, _ := range uuids.ids {
+		times = append(times, k)
+	}
+
+	// order by desc
+	sort.Slice(times, func(i, j int) bool {
+		return times[i] > times[j]
+	})
+
+	for i := 1; i < len(times); i++ {
+		if uuids.ids[times[i-1]] < uuids.ids[times[i]] {
+			t.Error("recent generated id is lower than previous generated", uuids.ids[times[i-1]], "vs", uuids.ids[times[i]])
+			t.Fail()
+		}
 	}
 }
 
