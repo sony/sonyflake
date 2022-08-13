@@ -1,5 +1,5 @@
-//	Package Types defines type signatures used throughout SonyFlake. This allows for
-//	fine-tuned control over imports, and the ability to mock out imports as well
+// Package Types defines type signatures used throughout SonyFlake. This allows for
+// fine-tuned control over imports, and the ability to mock out imports as well
 package types
 
 import "net"
