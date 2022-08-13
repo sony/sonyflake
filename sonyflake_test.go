@@ -189,7 +189,7 @@ func TestNextIDError(t *testing.T) {
 // can be sorted by those generated ids.
 // Sorted by ID will resemble as sorted by time.
 // And SonyFlake id is resemble increment id in database when you want to sort it.
-func TestSortableID(t *testing.T)  {
+func TestSortableID(t *testing.T) {
 	numCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(numCPU)
 	fmt.Println("number of cpu:", numCPU)
@@ -228,7 +228,6 @@ func TestSortableID(t *testing.T)  {
 				wg.Done()
 			}()
 
-
 			id, err := gen.NextID()
 			if err != nil {
 				t.Error(err.Error())
@@ -244,7 +243,7 @@ func TestSortableID(t *testing.T)  {
 	wg.Wait()
 
 	times := make([]int64, 0)
-	for k, _ := range uuids.ids {
+	for k := range uuids.ids {
 		times = append(times, k)
 	}
 
