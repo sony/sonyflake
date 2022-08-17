@@ -76,8 +76,11 @@ func TestSonyflakeFor10Sec(t *testing.T) {
 		parts := Decompose(id)
 		numID++
 
-		if id <= lastID {
+		if id == lastID {
 			t.Fatal("duplicated id")
+		}
+		if id < lastID {
+			t.Fatal("must increase with time")
 		}
 		lastID = id
 
