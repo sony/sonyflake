@@ -57,35 +57,48 @@ var (
 	ErrInvalidMachineID = errors.New("invalid machine ID")
 )
 
-// NewSonyflake returns a new Sonyflake configured with the given Settings.
-// NewSonyflake returns nil in the following cases:
-// - Settings.StartTime is ahead of the current time.
-// - Settings.MachineID returns an error.
-// - Settings.CheckMachineID returns false.
-func NewSonyflake(st Settings) *Sonyflake {
+// New returns a new Sonyflake configured with the given Settings. If an error occurs,
+// the *sonyflake.Sonyflake pointer will be nil and an error instance will be returned.
+func New(st Settings) (*Sonyflake, error) {
+	if st.StartTime.After(time.Now()) {
+		return nil, ErrStartTimeAhead
+	}
+
 	sf := new(Sonyflake)
 	sf.mutex = new(sync.Mutex)
 	sf.sequence = uint16(1<<BitLenSequence - 1)
 
-	if st.StartTime.After(time.Now()) {
-		return nil
-	}
 	if st.StartTime.IsZero() {
 		sf.startTime = toSonyflakeTime(time.Date(2014, 9, 1, 0, 0, 0, 0, time.UTC))
 	} else {
 		sf.startTime = toSonyflakeTime(st.StartTime)
 	}
 
-	var err error
+	// Fallback to default ID resolver
 	if st.MachineID == nil {
-		sf.machineID, err = lower16BitPrivateIP()
-	} else {
-		sf.machineID, err = st.MachineID()
-	}
-	if err != nil || (st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID)) {
-		return nil
+		st.MachineID = lower16BitPrivateIP
 	}
 
+	var err error
+	sf.machineID, err = st.MachineID()
+	if err != nil {
+		return nil, err
+	}
+
+	if st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID) {
+		return nil, ErrInvalidMachineID
+	}
+
+	return sf, nil
+}
+
+// NewSonyflake returns a new Sonyflake configured with the given Settings.
+// NewSonyflake returns nil in the following cases:
+// - Settings.StartTime is ahead of the current time.
+// - Settings.MachineID returns an error.
+// - Settings.CheckMachineID returns false.
+func NewSonyflake(st Settings) *Sonyflake {
+	sf, _ := New(st)
 	return sf
 }
 
