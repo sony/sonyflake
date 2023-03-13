@@ -50,6 +50,13 @@ type Sonyflake struct {
 	machineID   uint16
 }
 
+var (
+	ErrStartTimeAhead   = errors.New("the start time cannot be in the future")
+	ErrNoPrivateAddress = errors.New("no private IP address")
+	ErrOverTimeLimit    = errors.New("over the time limit")
+	ErrInvalidMachineID = errors.New("invalid machine ID")
+)
+
 // NewSonyflake returns a new Sonyflake configured with the given Settings.
 // NewSonyflake returns nil in the following cases:
 // - Settings.StartTime is ahead of the current time.
@@ -123,7 +130,7 @@ func sleepTime(overtime int64) time.Duration {
 
 func (sf *Sonyflake) toID() (uint64, error) {
 	if sf.elapsedTime >= 1<<BitLenTime {
-		return 0, errors.New("over the time limit")
+		return 0, ErrOverTimeLimit
 	}
 
 	return uint64(sf.elapsedTime)<<(BitLenSequence+BitLenMachineID) |
@@ -148,7 +155,7 @@ func privateIPv4() (net.IP, error) {
 			return ip, nil
 		}
 	}
-	return nil, errors.New("no private ip address")
+	return nil, ErrNoPrivateAddress
 }
 
 func isPrivateIPv4(ip net.IP) bool {
