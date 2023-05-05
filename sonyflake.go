@@ -89,12 +89,16 @@ func NewSonyflake(st Settings) *Sonyflake {
 // NextID generates a next unique ID.
 // After the Sonyflake time overflows, NextID returns an error.
 func (sf *Sonyflake) NextID() (uint64, error) {
+	return sf.NextIDWithCustomNow(time.Now())
+}
+
+func (sf *Sonyflake) NextIDWithCustomNow(now time.Time) (uint64, error) {
 	const maskSequence = uint16(1<<BitLenSequence - 1)
 
 	sf.mutex.Lock()
 	defer sf.mutex.Unlock()
 
-	current := currentElapsedTime(sf.startTime)
+	current := currentElapsedTime(now, sf.startTime)
 	if sf.elapsedTime < current {
 		sf.elapsedTime = current
 		sf.sequence = 0
@@ -116,8 +120,8 @@ func toSonyflakeTime(t time.Time) int64 {
 	return t.UTC().UnixNano() / sonyflakeTimeUnit
 }
 
-func currentElapsedTime(startTime int64) int64 {
-	return toSonyflakeTime(time.Now()) - startTime
+func currentElapsedTime(now time.Time, startTime int64) int64 {
+	return toSonyflakeTime(now) - startTime
 }
 
 func sleepTime(overtime int64) time.Duration {
