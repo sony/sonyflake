@@ -33,10 +33,10 @@ go get github.com/sony/sonyflake
 Usage
 -----
 
-The function NewSonyflake creates a new Sonyflake instance.
+The function New creates a new Sonyflake instance.
 
 ```go
-func NewSonyflake(st Settings) *Sonyflake
+func New(st Settings) (*Sonyflake, error)
 ```
 
 You can configure Sonyflake by the struct Settings:
