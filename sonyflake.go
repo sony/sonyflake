@@ -53,16 +53,19 @@ type Sonyflake struct {
 }
 
 var (
-	ErrStartTimeAhead   = errors.New("the start time cannot be in the future")
-	ErrNoPrivateAddress = errors.New("no private IP address")
+	ErrStartTimeAhead   = errors.New("start time is ahead of now")
+	ErrNoPrivateAddress = errors.New("no private ip address")
 	ErrOverTimeLimit    = errors.New("over the time limit")
-	ErrInvalidMachineID = errors.New("invalid machine ID")
+	ErrInvalidMachineID = errors.New("invalid machine id")
 )
 
 var defaultInterfaceAddrs = net.InterfaceAddrs
 
-// New returns a new Sonyflake configured with the given Settings. If an error occurs,
-// the *sonyflake.Sonyflake pointer will be nil and an error instance will be returned.
+// New returns a new Sonyflake configured with the given Settings.
+// New returns an error in the following cases:
+// - Settings.StartTime is ahead of the current time.
+// - Settings.MachineID returns an error.
+// - Settings.CheckMachineID returns false.
 func New(st Settings) (*Sonyflake, error) {
 	if st.StartTime.After(time.Now()) {
 		return nil, ErrStartTimeAhead
