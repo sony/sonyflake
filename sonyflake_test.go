@@ -2,6 +2,7 @@ package sonyflake
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -38,6 +39,60 @@ func nextID(t *testing.T) uint64 {
 		t.Fatal("id not generated")
 	}
 	return id
+}
+
+func TestNew(t *testing.T) {
+	genError := fmt.Errorf("an error occurred while generating ID")
+
+	tests := []struct {
+		name     string
+		settings Settings
+		err      error
+	}{
+		{
+			name: "failure: time ahead",
+			settings: Settings{
+				StartTime: time.Now().Add(time.Minute),
+			},
+			err: ErrStartTimeAhead,
+		},
+		{
+			name: "failure: machine ID",
+			settings: Settings{
+				MachineID: func() (uint16, error) {
+					return 0, genError
+				},
+			},
+			err: genError,
+		},
+		{
+			name: "failure: invalid machine ID",
+			settings: Settings{
+				CheckMachineID: func(uint16) bool {
+					return false
+				},
+			},
+			err: ErrInvalidMachineID,
+		},
+		{
+			name:     "success",
+			settings: Settings{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			sonyflake, err := New(test.settings)
+
+			if !errors.Is(err, test.err) {
+				t.Fatalf("unexpected value, want %#v, got %#v", test.err, err)
+			}
+
+			if sonyflake == nil && err == nil {
+				t.Fatal("unexpected value, sonyflake should not be nil")
+			}
+		})
+	}
 }
 
 func TestSonyflakeOnce(t *testing.T) {
@@ -148,30 +203,6 @@ func TestSonyflakeInParallel(t *testing.T) {
 		set[id] = struct{}{}
 	}
 	fmt.Println("number of id:", len(set))
-}
-
-func TestNilSonyflake(t *testing.T) {
-	var startInFuture Settings
-	startInFuture.StartTime = time.Now().Add(time.Duration(1) * time.Minute)
-	if NewSonyflake(startInFuture) != nil {
-		t.Errorf("sonyflake starting in the future")
-	}
-
-	var noMachineID Settings
-	noMachineID.MachineID = func() (uint16, error) {
-		return 0, fmt.Errorf("no machine id")
-	}
-	if NewSonyflake(noMachineID) != nil {
-		t.Errorf("sonyflake with no machine id")
-	}
-
-	var invalidMachineID Settings
-	invalidMachineID.CheckMachineID = func(uint16) bool {
-		return false
-	}
-	if NewSonyflake(invalidMachineID) != nil {
-		t.Errorf("sonyflake with invalid machine id")
-	}
 }
 
 func pseudoSleep(period time.Duration) {

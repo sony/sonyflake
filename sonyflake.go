@@ -52,21 +52,29 @@ type Sonyflake struct {
 	machineID   uint16
 }
 
+var (
+	ErrStartTimeAhead   = errors.New("start time is ahead of now")
+	ErrNoPrivateAddress = errors.New("no private ip address")
+	ErrOverTimeLimit    = errors.New("over the time limit")
+	ErrInvalidMachineID = errors.New("invalid machine id")
+)
+
 var defaultInterfaceAddrs = net.InterfaceAddrs
 
-// NewSonyflake returns a new Sonyflake configured with the given Settings.
-// NewSonyflake returns nil in the following cases:
+// New returns a new Sonyflake configured with the given Settings.
+// New returns an error in the following cases:
 // - Settings.StartTime is ahead of the current time.
 // - Settings.MachineID returns an error.
 // - Settings.CheckMachineID returns false.
-func NewSonyflake(st Settings) *Sonyflake {
+func New(st Settings) (*Sonyflake, error) {
+	if st.StartTime.After(time.Now()) {
+		return nil, ErrStartTimeAhead
+	}
+
 	sf := new(Sonyflake)
 	sf.mutex = new(sync.Mutex)
 	sf.sequence = uint16(1<<BitLenSequence - 1)
 
-	if st.StartTime.After(time.Now()) {
-		return nil
-	}
 	if st.StartTime.IsZero() {
 		sf.startTime = toSonyflakeTime(time.Date(2014, 9, 1, 0, 0, 0, 0, time.UTC))
 	} else {
@@ -79,10 +87,24 @@ func NewSonyflake(st Settings) *Sonyflake {
 	} else {
 		sf.machineID, err = st.MachineID()
 	}
-	if err != nil || (st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID)) {
-		return nil
+	if err != nil {
+		return nil, err
 	}
 
+	if st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID) {
+		return nil, ErrInvalidMachineID
+	}
+
+	return sf, nil
+}
+
+// NewSonyflake returns a new Sonyflake configured with the given Settings.
+// NewSonyflake returns nil in the following cases:
+// - Settings.StartTime is ahead of the current time.
+// - Settings.MachineID returns an error.
+// - Settings.CheckMachineID returns false.
+func NewSonyflake(st Settings) *Sonyflake {
+	sf, _ := New(st)
 	return sf
 }
 
@@ -127,7 +149,7 @@ func sleepTime(overtime int64) time.Duration {
 
 func (sf *Sonyflake) toID() (uint64, error) {
 	if sf.elapsedTime >= 1<<BitLenTime {
-		return 0, errors.New("over the time limit")
+		return 0, ErrOverTimeLimit
 	}
 
 	return uint64(sf.elapsedTime)<<(BitLenSequence+BitLenMachineID) |
@@ -152,7 +174,7 @@ func privateIPv4(interfaceAddrs types.InterfaceAddrs) (net.IP, error) {
 			return ip, nil
 		}
 	}
-	return nil, errors.New("no private ip address")
+	return nil, ErrNoPrivateAddress
 }
 
 func isPrivateIPv4(ip net.IP) bool {
