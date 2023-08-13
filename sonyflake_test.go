@@ -1,8 +1,8 @@
 package sonyflake
 
 import (
-	"errors"
 	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	"runtime"

@@ -78,7 +78,7 @@ func New(st Settings) (*Sonyflake, error) {
 		sf.startTime = toSonyflakeTime(st.StartTime)
 	}
 
-  var err error
+	var err error
 	if st.MachineID == nil {
 		sf.machineID, err = lower16BitPrivateIP(defaultInterfaceAddrs)
 	} else {
