@@ -2,7 +2,7 @@
 //
 // A Sonyflake ID is composed of
 //
-//	39 bits for time in units of 10 msec
+//	39 or 40 bits for time in units of 10 msec
 //	 8 bits for a sequence number
 //	16 bits for a machine id
 package sonyflake
@@ -19,6 +19,7 @@ import (
 // These constants are the bit lengths of Sonyflake ID parts.
 const (
 	BitLenTime      = 39                               // bit length of time
+	BitLenTimeUint  = 40                               // bit length of time using all 64 bits
 	BitLenSequence  = 8                                // bit length of sequence number
 	BitLenMachineID = 63 - BitLenTime - BitLenSequence // bit length of machine id
 )
@@ -37,10 +38,17 @@ const (
 // CheckMachineID validates the uniqueness of the machine ID.
 // If CheckMachineID returns false, Sonyflake is not created.
 // If CheckMachineID is nil, no validation is done.
+//
+// Use64Bits uses all 64 bits for the ID, rather than 63. This allows for the
+// generation of unique IDs for over 348 years from the start date. Note that
+// after 174 years from the start date, IDs converted to `int64` will be
+// negative.
+
 type Settings struct {
 	StartTime      time.Time
 	MachineID      func() (uint16, error)
 	CheckMachineID func(uint16) bool
+	Use64Bits      bool
 }
 
 // Sonyflake is a distributed unique ID generator.
@@ -50,6 +58,7 @@ type Sonyflake struct {
 	elapsedTime int64
 	sequence    uint16
 	machineID   uint16
+	bitLenTime  uint8
 }
 
 var (
@@ -93,6 +102,12 @@ func New(st Settings) (*Sonyflake, error) {
 
 	if st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID) {
 		return nil, ErrInvalidMachineID
+	}
+
+	if st.Use64Bits {
+		sf.bitLenTime = BitLenTimeUint
+	} else {
+		sf.bitLenTime = BitLenTime
 	}
 
 	return sf, nil
@@ -148,7 +163,7 @@ func sleepTime(overtime int64) time.Duration {
 }
 
 func (sf *Sonyflake) toID() (uint64, error) {
-	if sf.elapsedTime >= 1<<BitLenTime {
+	if sf.elapsedTime >= 1<<sf.bitLenTime {
 		return 0, ErrOverTimeLimit
 	}
 

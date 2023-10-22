@@ -10,13 +10,13 @@ Sonyflake focuses on lifetime and performance on many host/core environment.
 So it has a different bit assignment from Snowflake.
 A Sonyflake ID is composed of
 
-    39 bits for time in units of 10 msec
+    39 or 40 bits for time in units of 10 msec
      8 bits for a sequence number
     16 bits for a machine id
 
 As a result, Sonyflake has the following advantages and disadvantages:
 
-- The lifetime (174 years) is longer than that of Snowflake (69 years)
+- The lifetime (174 or 348 years) is longer than that of Snowflake (69 years)
 - It can work in more distributed machines (2^16) than Snowflake (2^10)
 - It can generate 2^8 IDs per 10 msec at most in a single machine/thread (slower than Snowflake)
 
@@ -46,6 +46,7 @@ type Settings struct {
 	StartTime      time.Time
 	MachineID      func() (uint16, error)
 	CheckMachineID func(uint16) bool
+	Use64Bits      bool
 }
 ```
 
@@ -62,18 +63,27 @@ type Settings struct {
   If CheckMachineID returns false, Sonyflake is not created.
   If CheckMachineID is nil, no validation is done.
 
+- Use64Bits uses all 64 bits for the ID, rather than 63. This allows for the
+  generation of unique IDs for over 348 years from the start date. Note that
+  after 174 years from the start date, IDs converted to `int64` will be
+  negative.
+
 In order to get a new unique ID, you just have to call the method NextID.
 
 ```go
 func (sf *Sonyflake) NextID() (uint64, error)
 ```
 
-NextID can continue to generate IDs for about 174 years from StartTime.
-But after the Sonyflake time is over the limit, NextID returns an error.
+NextID can continue to generate IDs for about 174 years from StartTime, or 348
+years with `Use64Bits`. But after the Sonyflake time is over the limit, NextID
+returns an error.
 
 > **Note:**
-> Sonyflake currently does not use the most significant bit of IDs,
-> so you can convert Sonyflake IDs from `uint64` to `int64` safely.
+> By default, Sonyflake currently does not use the most significant bit of IDs,
+> so you can convert Sonyflake IDs from `uint64` to `int64` safely for consistent
+> IDs. With the `Use64Bits` setting, IDs created after 174 years will be negative
+> when converted to `int64`, and therefore will not have the same numeric value as
+> the `uint64` ID representation.
 
 AWS VPC and Docker
 ------------------
