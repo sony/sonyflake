@@ -1,7 +1,6 @@
 package sonyflake
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -259,7 +258,7 @@ func TestPrivateIPv4(t *testing.T) {
 				return
 			}
 
-			if bytes.Equal(actual, tc.expected) {
+			if net.IP.Equal(actual, tc.expected) {
 				return
 			} else {
 				t.Errorf("error: expected: %s, but got: %s", tc.expected, actual)
