@@ -178,8 +178,9 @@ func privateIPv4(interfaceAddrs types.InterfaceAddrs) (net.IP, error) {
 }
 
 func isPrivateIPv4(ip net.IP) bool {
+	// Allow private IP subnets (RFC1918) or link local (RFC3927)
 	return ip != nil &&
-		(ip[0] == 10 || ip[0] == 172 && (ip[1] >= 16 && ip[1] < 32) || ip[0] == 192 && ip[1] == 168)
+		(ip[0] == 10 || ip[0] == 172 && (ip[1] >= 16 && ip[1] < 32) || ip[0] == 192 && ip[1] == 168 || ip[0] == 169 && ip[1] == 254)
 }
 
 func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (uint16, error) {
