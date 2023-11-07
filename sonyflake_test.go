@@ -13,6 +13,7 @@ import (
 )
 
 var sf *Sonyflake
+var sfu *Sonyflake
 
 var startTime int64
 var machineID uint64
@@ -24,6 +25,12 @@ func init() {
 	sf = NewSonyflake(st)
 	if sf == nil {
 		panic("sonyflake not created")
+	}
+
+	st.Use64Bits = true
+	sfu = NewSonyflake(st)
+	if sfu == nil {
+		panic("uint sonyflake not created")
 	}
 
 	startTime = toSonyflakeTime(st.StartTime)
@@ -206,6 +213,7 @@ func TestSonyflakeInParallel(t *testing.T) {
 
 func pseudoSleep(period time.Duration) {
 	sf.startTime -= int64(period) / sonyflakeTimeUnit
+	sfu.startTime -= int64(period) / sonyflakeTimeUnit
 }
 
 func TestNextIDError(t *testing.T) {
@@ -217,6 +225,16 @@ func TestNextIDError(t *testing.T) {
 	_, err := sf.NextID()
 	if err == nil {
 		t.Errorf("time is not over")
+	}
+	_, err = sfu.NextID()
+	if err != nil {
+		t.Error("uint id not generated")
+	}
+
+	pseudoSleep(time.Duration(174) * year)
+	_, err = sfu.NextID()
+	if err == nil {
+		t.Errorf("uint time is not over")
 	}
 }
 
