@@ -71,6 +71,12 @@ func (sf *Sonyflake) NextID() (uint64, error)
 NextID can continue to generate IDs for about 174 years from StartTime.
 But after the Sonyflake time is over the limit, NextID returns an error.
 
+if you want to use the mono time, you can call the method NextIDMono.
+
+```go
+func (sf *Sonyflake) NextIDMono() (uint64, error)
+```
+NextIDMono can avoid the clock backwards.
 > **Note:**
 > Sonyflake currently does not use the most significant bit of IDs,
 > so you can convert Sonyflake IDs from `uint64` to `int64` safely.

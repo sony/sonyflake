@@ -312,3 +312,35 @@ func TestSonyflakeTimeUnit(t *testing.T) {
 		t.Errorf("unexpected time unit")
 	}
 }
+
+func nextIDMono(t *testing.T) uint64 {
+	id, err := sf.NextIDMono()
+	if err != nil {
+		t.Fatal("id not generated")
+	}
+	return id
+}
+func TestSonyflake_NextIDMono(t *testing.T) {
+	sleepTime := time.Duration(50 * sonyflakeTimeUnit)
+	time.Sleep(sleepTime)
+
+	id := nextIDMono(t)
+
+	actualTime := ElapsedTime(id)
+	if actualTime < sleepTime || actualTime > sleepTime+sonyflakeTimeUnit {
+		t.Errorf("unexpected time: %d", actualTime)
+	}
+
+	actualSequence := SequenceNumber(id)
+	if actualSequence != 0 {
+		t.Errorf("unexpected sequence: %d", actualSequence)
+	}
+
+	actualMachineID := MachineID(id)
+	if actualMachineID != machineID {
+		t.Errorf("unexpected machine id: %d", actualMachineID)
+	}
+
+	fmt.Println("sonyflake id:", id)
+	fmt.Println("decompose:", Decompose(id))
+}
