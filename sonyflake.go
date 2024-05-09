@@ -45,11 +45,12 @@ type Settings struct {
 
 // Sonyflake is a distributed unique ID generator.
 type Sonyflake struct {
-	mutex       *sync.Mutex
-	startTime   int64
-	elapsedTime int64
-	sequence    uint16
-	machineID   uint16
+	mutex         *sync.Mutex
+	startTime     int64
+	startTimeMono time.Time
+	elapsedTime   int64
+	sequence      uint16
+	machineID     uint16
 }
 
 var (
@@ -77,8 +78,10 @@ func New(st Settings) (*Sonyflake, error) {
 
 	if st.StartTime.IsZero() {
 		sf.startTime = toSonyflakeTime(time.Date(2014, 9, 1, 0, 0, 0, 0, time.UTC))
+		sf.startTimeMono = time.Now()
 	} else {
 		sf.startTime = toSonyflakeTime(st.StartTime)
+		sf.startTimeMono = st.StartTime
 	}
 
 	var err error
@@ -132,6 +135,31 @@ func (sf *Sonyflake) NextID() (uint64, error) {
 	return sf.toID()
 }
 
+// NextIDMono generates a next unique ID.
+// After the Sonyflake time overflows, NextID returns an error.
+// This function use mono time to avoid clock backwards
+func (sf *Sonyflake) NextIDMono() (uint64, error) {
+	const maskSequence = uint16(1<<BitLenSequence - 1)
+
+	sf.mutex.Lock()
+	defer sf.mutex.Unlock()
+
+	current := currentElapsedTimeMono(sf.startTimeMono)
+	if sf.elapsedTime < current {
+		sf.elapsedTime = current
+		sf.sequence = 0
+	} else {
+		sf.sequence = (sf.sequence + 1) & maskSequence
+		if sf.sequence == 0 {
+			sf.elapsedTime++
+			overtime := sf.elapsedTime - current
+			time.Sleep(sleepTime((overtime)))
+		}
+	}
+
+	return sf.toID()
+}
+
 const sonyflakeTimeUnit = 1e7 // nsec, i.e. 10 msec
 
 func toSonyflakeTime(t time.Time) int64 {
@@ -140,6 +168,9 @@ func toSonyflakeTime(t time.Time) int64 {
 
 func currentElapsedTime(startTime int64) int64 {
 	return toSonyflakeTime(time.Now()) - startTime
+}
+func currentElapsedTimeMono(startTimeMono time.Time) int64 {
+	return time.Now().Sub(startTimeMono).Nanoseconds() / sonyflakeTimeUnit
 }
 
 func sleepTime(overtime int64) time.Duration {
