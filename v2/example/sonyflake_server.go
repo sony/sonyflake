@@ -33,10 +33,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header()["Content-Type"] = []string{"application/json; charset=utf-8"}
-	w.Write(body)
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func main() {
 	http.HandleFunc("/", handler)
-	http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		panic(err)
+	}
 }
