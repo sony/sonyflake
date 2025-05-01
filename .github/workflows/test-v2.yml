@@ -1,0 +1,46 @@
+name: CI for v2 Module
+
+on:
+  push:
+    paths:
+      - 'v2/**'
+  pull_request:
+    paths:
+      - 'v2/**'
+
+jobs:
+  test-v2:
+    strategy:
+      matrix:
+        go-version: [1.23.x, 1.24.x]
+        os: [ubuntu-latest]
+
+    runs-on: ${{matrix.os}}
+
+    defaults:
+      run:
+        working-directory: ./v2
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./v2/go.mod
+
+      - name: Tidy modules
+        run: go mod tidy
+
+      - name: Run tests
+        run: go test ./... -v
+
+      - name: gofmt
+        run: test -z "`gofmt -l .`"
+
+      - name: golint
+        run: test -z "`golint ./...`"
+
+      - name: Build example
+        run: cd example && ./linux64_build.sh

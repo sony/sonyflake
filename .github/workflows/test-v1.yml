@@ -1,0 +1,43 @@
+name: CI for v1 Module
+
+on:
+  push:
+    paths-ignore:
+      - 'v2/**'
+  pull_request:
+    paths-ignore:
+      - 'v2/**'
+
+jobs:
+  test-v1:
+    strategy:
+      matrix:
+        go-version: [1.23.x, 1.24.x]
+        os: [ubuntu-latest]
+
+    runs-on: ${{matrix.os}}
+
+    defaults:
+      run:
+        working-directory: ./
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{matrix.go-version}}
+
+      - name: gofmt
+        run: test -z "`gofmt -l .`"
+
+      - name: golint
+        run: test -z "`golint ./...`"
+
+      - name: go test
+        run: go test -v ./...
+
+      - name: Build example
+        run: cd example && ./linux64_build.sh
