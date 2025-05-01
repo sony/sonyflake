@@ -3,9 +3,11 @@ name: CI for v2 Module
 on:
   push:
     paths:
+      - .github/workflows/test-v2.yml
       - 'v2/**'
   pull_request:
     paths:
+      - .github/workflows/test-v2.yml
       - 'v2/**'
 
 jobs:
