@@ -39,8 +39,17 @@ jobs:
       - name: gofmt
         run: test -z "`gofmt -l .`"
 
+      - name: Install golint
+        run: go install golang.org/x/lint/golint@latest
+
       - name: golint
-        run: test -z "`golint ./...`"
+        run: test -z "`$(go env GOPATH)/bin/golint ./...`"
+
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: staticcheck
+        run: $(go env GOPATH)/bin/staticcheck ./...
 
       - name: Build example
         run: cd example && ./linux64_build.sh
