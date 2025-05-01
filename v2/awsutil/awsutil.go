@@ -34,13 +34,13 @@ func amazonEC2PrivateIPv4() (net.IP, error) {
 // AmazonEC2MachineID retrieves the private IP address of the Amazon EC2 instance
 // and returns its lower 16 bits.
 // It works correctly on Docker as well.
-func AmazonEC2MachineID() (uint16, error) {
+func AmazonEC2MachineID() (int64, error) {
 	ip, err := amazonEC2PrivateIPv4()
 	if err != nil {
 		return 0, err
 	}
 
-	return uint16(ip[2])<<8 + uint16(ip[3]), nil
+	return int64(uint16(ip[2])<<8 + uint16(ip[3])), nil
 }
 
 // TimeDifference returns the time difference between the localhost and the given NTP server.

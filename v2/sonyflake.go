@@ -39,8 +39,8 @@ const (
 // If CheckMachineID is nil, no validation is done.
 type Settings struct {
 	StartTime      time.Time
-	MachineID      func() (uint16, error)
-	CheckMachineID func(uint16) bool
+	MachineID      func() (int64, error)
+	CheckMachineID func(int64) bool
 }
 
 // Sonyflake is a distributed unique ID generator.
@@ -48,8 +48,8 @@ type Sonyflake struct {
 	mutex       *sync.Mutex
 	startTime   int64
 	elapsedTime int64
-	sequence    uint16
-	machineID   uint16
+	sequence    int64
+	machineID   int64
 }
 
 var (
@@ -73,10 +73,10 @@ func New(st Settings) (*Sonyflake, error) {
 
 	sf := new(Sonyflake)
 	sf.mutex = new(sync.Mutex)
-	sf.sequence = uint16(1<<BitLenSequence - 1)
+	sf.sequence = int64(1<<BitLenSequence - 1)
 
 	if st.StartTime.IsZero() {
-		sf.startTime = toSonyflakeTime(time.Date(2014, 9, 1, 0, 0, 0, 0, time.UTC))
+		sf.startTime = toSonyflakeTime(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	} else {
 		sf.startTime = toSonyflakeTime(st.StartTime)
 	}
@@ -110,8 +110,10 @@ func NewSonyflake(st Settings) *Sonyflake {
 
 // NextID generates a next unique ID.
 // After the Sonyflake time overflows, NextID returns an error.
-func (sf *Sonyflake) NextID() (uint64, error) {
-	const maskSequence = uint16(1<<BitLenSequence - 1)
+// NextID generates a next unique ID as int64.
+// After the Sonyflake time overflows, NextID returns an error.
+func (sf *Sonyflake) NextID() (int64, error) {
+	const maskSequence = int64(1<<BitLenSequence - 1)
 
 	sf.mutex.Lock()
 	defer sf.mutex.Unlock()
@@ -147,14 +149,14 @@ func sleepTime(overtime int64) time.Duration {
 		time.Duration(time.Now().UTC().UnixNano()%sonyflakeTimeUnit)
 }
 
-func (sf *Sonyflake) toID() (uint64, error) {
+func (sf *Sonyflake) toID() (int64, error) {
 	if sf.elapsedTime >= 1<<BitLenTime {
 		return 0, ErrOverTimeLimit
 	}
 
-	return uint64(sf.elapsedTime)<<(BitLenSequence+BitLenMachineID) |
-		uint64(sf.sequence)<<BitLenMachineID |
-		uint64(sf.machineID), nil
+	return sf.elapsedTime<<(BitLenSequence+BitLenMachineID) |
+		sf.sequence<<BitLenMachineID |
+		sf.machineID, nil
 }
 
 func privateIPv4(interfaceAddrs types.InterfaceAddrs) (net.IP, error) {
@@ -183,43 +185,43 @@ func isPrivateIPv4(ip net.IP) bool {
 		(ip[0] == 10 || ip[0] == 172 && (ip[1] >= 16 && ip[1] < 32) || ip[0] == 192 && ip[1] == 168 || ip[0] == 169 && ip[1] == 254)
 }
 
-func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (uint16, error) {
+func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (int64, error) {
 	ip, err := privateIPv4(interfaceAddrs)
 	if err != nil {
 		return 0, err
 	}
 
-	return uint16(ip[2])<<8 + uint16(ip[3]), nil
+	return int64(ip[2])<<8 + int64(ip[3]), nil
 }
 
 // ElapsedTime returns the elapsed time when the given Sonyflake ID was generated.
-func ElapsedTime(id uint64) time.Duration {
+func ElapsedTime(id int64) time.Duration {
 	return time.Duration(elapsedTime(id) * sonyflakeTimeUnit)
 }
 
-func elapsedTime(id uint64) uint64 {
+func elapsedTime(id int64) int64 {
 	return id >> (BitLenSequence + BitLenMachineID)
 }
 
 // SequenceNumber returns the sequence number of a Sonyflake ID.
-func SequenceNumber(id uint64) uint64 {
-	const maskSequence = uint64((1<<BitLenSequence - 1) << BitLenMachineID)
-	return id & maskSequence >> BitLenMachineID
+func SequenceNumber(id int64) int64 {
+	const maskSequence = int64((1<<BitLenSequence - 1) << BitLenMachineID)
+	return (id & maskSequence) >> BitLenMachineID
 }
 
 // MachineID returns the machine ID of a Sonyflake ID.
-func MachineID(id uint64) uint64 {
-	const maskMachineID = uint64(1<<BitLenMachineID - 1)
+func MachineID(id int64) int64 {
+	const maskMachineID = int64(1<<BitLenMachineID - 1)
 	return id & maskMachineID
 }
 
 // Decompose returns a set of Sonyflake ID parts.
-func Decompose(id uint64) map[string]uint64 {
+func Decompose(id int64) map[string]int64 {
 	msb := id >> 63
 	time := elapsedTime(id)
 	sequence := SequenceNumber(id)
 	machineID := MachineID(id)
-	return map[string]uint64{
+	return map[string]int64{
 		"id":         id,
 		"msb":        msb,
 		"time":       time,

@@ -15,7 +15,7 @@ import (
 var sf *Sonyflake
 
 var startTime int64
-var machineID uint64
+var machineID int64
 
 func init() {
 	var st Settings
@@ -29,10 +29,10 @@ func init() {
 	startTime = toSonyflakeTime(st.StartTime)
 
 	ip, _ := lower16BitPrivateIP(defaultInterfaceAddrs)
-	machineID = uint64(ip)
+	machineID = int64(ip)
 }
 
-func nextID(t *testing.T) uint64 {
+func nextID(t *testing.T) int64 {
 	id, err := sf.NextID()
 	if err != nil {
 		t.Fatal("id not generated")
@@ -58,7 +58,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "failure: machine ID",
 			settings: Settings{
-				MachineID: func() (uint16, error) {
+				MachineID: func() (int64, error) {
 					return 0, genError
 				},
 			},
@@ -67,7 +67,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "failure: invalid machine ID",
 			settings: Settings{
-				CheckMachineID: func(uint16) bool {
+				CheckMachineID: func(int64) bool {
 					return false
 				},
 			},
@@ -125,8 +125,8 @@ func currentTime() int64 {
 
 func TestSonyflakeFor10Sec(t *testing.T) {
 	var numID uint32
-	var lastID uint64
-	var maxSequence uint64
+	var lastID int64
+	var maxSequence int64
 
 	initial := currentTime()
 	current := initial
@@ -179,7 +179,7 @@ func TestSonyflakeInParallel(t *testing.T) {
 	runtime.GOMAXPROCS(numCPU)
 	fmt.Println("number of cpu:", numCPU)
 
-	consumer := make(chan uint64)
+	consumer := make(chan int64)
 
 	const numID = 10000
 	generate := func() {
@@ -193,7 +193,7 @@ func TestSonyflakeInParallel(t *testing.T) {
 		go generate()
 	}
 
-	set := make(map[uint64]struct{})
+	set := make(map[int64]struct{})
 	for i := 0; i < numID*numGenerator; i++ {
 		id := <-consumer
 		if _, ok := set[id]; ok {
@@ -270,7 +270,7 @@ func TestPrivateIPv4(t *testing.T) {
 func TestLower16BitPrivateIP(t *testing.T) {
 	testCases := []struct {
 		description    string
-		expected       uint16
+		expected       int64
 		interfaceAddrs types.InterfaceAddrs
 		error          string
 	}{

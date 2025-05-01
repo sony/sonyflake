@@ -27,7 +27,7 @@ Installation
 ------------
 
 ```
-go get github.com/sony/sonyflake
+go get github.com/sony/sonyflake/v2
 ```
 
 Usage
@@ -44,8 +44,8 @@ You can configure Sonyflake by the struct Settings:
 ```go
 type Settings struct {
 	StartTime      time.Time
-	MachineID      func() (uint16, error)
-	CheckMachineID func(uint16) bool
+	MachineID      func() (int64, error)
+	CheckMachineID func(int64) bool
 }
 ```
 
@@ -65,15 +65,11 @@ type Settings struct {
 In order to get a new unique ID, you just have to call the method NextID.
 
 ```go
-func (sf *Sonyflake) NextID() (uint64, error)
+func (sf *Sonyflake) NextID() (int64, error)
 ```
 
 NextID can continue to generate IDs for about 174 years from StartTime.
 But after the Sonyflake time is over the limit, NextID returns an error.
-
-> **Note:**
-> Sonyflake currently does not use the most significant bit of IDs,
-> so you can convert Sonyflake IDs from `uint64` to `int64` safely.
 
 AWS VPC and Docker
 ------------------
