@@ -35,6 +35,8 @@ jobs:
 
       - name: Lint Code
         uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: ./v2
 
       - name: Check format
         run: test -z "`gofmt -l .`"
