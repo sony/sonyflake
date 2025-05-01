@@ -98,16 +98,6 @@ func New(st Settings) (*Sonyflake, error) {
 	return sf, nil
 }
 
-// NewSonyflake returns a new Sonyflake configured with the given Settings.
-// NewSonyflake returns nil in the following cases:
-// - Settings.StartTime is ahead of the current time.
-// - Settings.MachineID returns an error.
-// - Settings.CheckMachineID returns false.
-func NewSonyflake(st Settings) *Sonyflake {
-	sf, _ := New(st)
-	return sf
-}
-
 // NextID generates a next unique ID.
 // After the Sonyflake time overflows, NextID returns an error.
 // NextID generates a next unique ID as int64.

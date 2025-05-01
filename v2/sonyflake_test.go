@@ -21,9 +21,9 @@ func init() {
 	var st Settings
 	st.StartTime = time.Now()
 
-	sf = NewSonyflake(st)
-	if sf == nil {
-		panic("sonyflake not created")
+	sf, err := New(st)
+	if err != nil {
+		panic(err)
 	}
 
 	startTime = toSonyflakeTime(st.StartTime)
