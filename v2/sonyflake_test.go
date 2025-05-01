@@ -21,7 +21,8 @@ func init() {
 	var st Settings
 	st.StartTime = time.Now()
 
-	sf, err := New(st)
+	var err error
+	sf, err = New(st)
 	if err != nil {
 		panic(err)
 	}

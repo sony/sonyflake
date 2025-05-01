@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/sony/sonyflake/v2"
@@ -14,13 +13,11 @@ var sf *sonyflake.Sonyflake
 func init() {
 	var st sonyflake.Settings
 	st.MachineID = awsutil.AmazonEC2MachineID
+
 	var err error
-sf, err = sonyflake.New(st)
-if err != nil {
-	log.Fatal(err)
-}
-	if sf == nil {
-		panic("sonyflake not created")
+	sf, err = sonyflake.New(st)
+	if err != nil {
+		panic(err)
 	}
 }
 
