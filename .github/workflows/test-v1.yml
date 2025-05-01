@@ -30,22 +30,13 @@ jobs:
         with:
           go-version: ${{matrix.go-version}}
 
-      - name: gofmt
+      - name: Lint Code
+        uses: golangci/golangci-lint-action@v6
+
+      - name: Check format
         run: test -z "`gofmt -l .`"
 
-      - name: Install golint
-        run: go install golang.org/x/lint/golint@latest
-
-      - name: golint
-        run: test -z "`$(go env GOPATH)/bin/golint ./...`"
-
-      - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
-
-      - name: staticcheck
-        run: $(go env GOPATH)/bin/staticcheck ./...
-
-      - name: go test
+      - name: Run tests
         run: go test -v ./...
 
       - name: Build example
