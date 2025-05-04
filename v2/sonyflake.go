@@ -37,6 +37,7 @@ const (
 // If CheckMachineID returns false, the instance will not be created.
 // If CheckMachineID is nil, no validation is done.
 type Settings struct {
+	TimeUnit       time.Duration
 	StartTime      time.Time
 	MachineID      func() (int, error)
 	CheckMachineID func(int) bool
@@ -45,6 +46,7 @@ type Settings struct {
 // Sonyflake is a distributed unique ID generator.
 type Sonyflake struct {
 	mutex       *sync.Mutex
+	timeUnit    int64
 	startTime   int64
 	elapsedTime int64
 	sequence    int
@@ -56,7 +58,10 @@ var (
 	ErrNoPrivateAddress = errors.New("no private ip address")
 	ErrOverTimeLimit    = errors.New("over the time limit")
 	ErrInvalidMachineID = errors.New("invalid machine id")
+	ErrInvalidTimeUnit  = errors.New("invalid time unit")
 )
+
+const defaultTimeUnit = 1e7 // nsec, i.e. 10 msec
 
 var defaultInterfaceAddrs = net.InterfaceAddrs
 
@@ -74,10 +79,18 @@ func New(st Settings) (*Sonyflake, error) {
 	sf.mutex = new(sync.Mutex)
 	sf.sequence = 1<<BitLenSequence - 1
 
-	if st.StartTime.IsZero() {
-		sf.startTime = toSonyflakeTime(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	if st.TimeUnit == 0 {
+		sf.timeUnit = defaultTimeUnit
+	} else if st.TimeUnit >= time.Millisecond {
+		sf.timeUnit = int64(st.TimeUnit)
 	} else {
-		sf.startTime = toSonyflakeTime(st.StartTime)
+		return nil, ErrInvalidTimeUnit
+	}
+
+	if st.StartTime.IsZero() {
+		sf.startTime = sf.toInternalTime(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	} else {
+		sf.startTime = sf.toInternalTime(st.StartTime)
 	}
 
 	var err error
@@ -105,7 +118,7 @@ func (sf *Sonyflake) NextID() (int64, error) {
 	sf.mutex.Lock()
 	defer sf.mutex.Unlock()
 
-	current := currentElapsedTime(sf.startTime)
+	current := sf.currentElapsedTime()
 	if sf.elapsedTime < current {
 		sf.elapsedTime = current
 		sf.sequence = 0
@@ -114,26 +127,25 @@ func (sf *Sonyflake) NextID() (int64, error) {
 		if sf.sequence == 0 {
 			sf.elapsedTime++
 			overtime := sf.elapsedTime - current
-			time.Sleep(sleepTime((overtime)))
+			sf.sleep(overtime)
 		}
 	}
 
 	return sf.toID()
 }
 
-const sonyflakeTimeUnit = 1e7 // nsec, i.e. 10 msec
-
-func toSonyflakeTime(t time.Time) int64 {
-	return t.UTC().UnixNano() / sonyflakeTimeUnit
+func (sf *Sonyflake) toInternalTime(t time.Time) int64 {
+	return t.UTC().UnixNano() / sf.timeUnit
 }
 
-func currentElapsedTime(startTime int64) int64 {
-	return toSonyflakeTime(time.Now()) - startTime
+func (sf *Sonyflake) currentElapsedTime() int64 {
+	return sf.toInternalTime(time.Now()) - sf.startTime
 }
 
-func sleepTime(overtime int64) time.Duration {
-	return time.Duration(overtime*sonyflakeTimeUnit) -
-		time.Duration(time.Now().UTC().UnixNano()%sonyflakeTimeUnit)
+func (sf *Sonyflake) sleep(overtime int64) {
+	sleepTime := time.Duration(overtime*sf.timeUnit) -
+		time.Duration(time.Now().UTC().UnixNano()%sf.timeUnit)
+	time.Sleep(sleepTime)
 }
 
 func (sf *Sonyflake) toID() (int64, error) {
@@ -181,12 +193,8 @@ func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (int, error) {
 	return int(ip[2])<<8 + int(ip[3]), nil
 }
 
-// ElapsedTime returns the elapsed time when the given Sonyflake ID was generated.
-func ElapsedTime(id int64) time.Duration {
-	return time.Duration(elapsedTime(id) * sonyflakeTimeUnit)
-}
-
-func elapsedTime(id int64) int64 {
+// ElapsedTime returns the elapsed time in Sonyflake time since the given ID was generated.
+func ElapsedTime(id int64) int64 {
 	return id >> (BitLenSequence + BitLenMachine)
 }
 
@@ -204,7 +212,7 @@ func MachineID(id int64) int {
 
 // Decompose returns a set of Sonyflake ID parts.
 func Decompose(id int64) map[string]int64 {
-	time := elapsedTime(id)
+	time := ElapsedTime(id)
 	sequence := SequenceNumber(id)
 	machine := MachineID(id)
 	return map[string]int64{

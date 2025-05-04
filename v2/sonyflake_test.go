@@ -93,13 +93,13 @@ func defaultMachineID(t *testing.T) int {
 func TestNextID(t *testing.T) {
 	sf := newSonyflake(t, Settings{StartTime: time.Now()})
 
-	sleepTime := time.Duration(50 * sonyflakeTimeUnit)
-	time.Sleep(sleepTime)
+	sleepTime := int64(50)
+	time.Sleep(time.Duration(sleepTime * sf.timeUnit))
 
 	id := nextID(t, sf)
 
 	actualTime := ElapsedTime(id)
-	if actualTime < sleepTime || actualTime > sleepTime+sonyflakeTimeUnit {
+	if actualTime < sleepTime || actualTime > sleepTime+1 {
 		t.Errorf("unexpected time: %d", actualTime)
 	}
 
@@ -120,7 +120,7 @@ func TestNextID(t *testing.T) {
 func TestNextID_InSequence(t *testing.T) {
 	now := time.Now()
 	sf := newSonyflake(t, Settings{StartTime: now})
-	startTime := toSonyflakeTime(now)
+	startTime := sf.toInternalTime(now)
 	machineID := int64(defaultMachineID(t))
 
 	var numID int
@@ -130,7 +130,7 @@ func TestNextID_InSequence(t *testing.T) {
 	currentTime := startTime
 	for currentTime-startTime < 100 {
 		id := nextID(t, sf)
-		currentTime = toSonyflakeTime(time.Now())
+		currentTime = sf.toInternalTime(time.Now())
 		numID++
 
 		if id == lastID {
@@ -204,7 +204,7 @@ func TestNextID_InParallel(t *testing.T) {
 }
 
 func pseudoSleep(sf *Sonyflake, period time.Duration) {
-	sf.startTime -= int64(period) / sonyflakeTimeUnit
+	sf.startTime -= int64(period) / sf.timeUnit
 }
 
 func TestNextID_ReturnsError(t *testing.T) {
