@@ -211,10 +211,10 @@ func TestNextID_ReturnsError(t *testing.T) {
 	sf := newSonyflake(t, Settings{StartTime: time.Now()})
 
 	year := time.Duration(365*24) * time.Hour
-	pseudoSleep(sf, time.Duration(174) * year)
+	pseudoSleep(sf, time.Duration(174)*year)
 	nextID(t, sf)
 
-	pseudoSleep(sf, time.Duration(1) * year)
+	pseudoSleep(sf, time.Duration(1)*year)
 	_, err := sf.NextID()
 	if err == nil {
 		t.Errorf("time is not over")
