@@ -18,9 +18,9 @@ import (
 
 // These constants are the bit lengths of Sonyflake ID parts.
 const (
-	BitLenTime      = 39                               // bit length of time
-	BitLenSequence  = 8                                // bit length of sequence number
-	BitLenMachineID = 63 - BitLenTime - BitLenSequence // bit length of machine id
+	BitLenTime     = 39                               // bit length of time
+	BitLenSequence = 8                                // bit length of sequence number
+	BitLenMachine  = 63 - BitLenTime - BitLenSequence // bit length of machine id
 )
 
 // Settings configures Sonyflake:
@@ -39,8 +39,8 @@ const (
 // If CheckMachineID is nil, no validation is done.
 type Settings struct {
 	StartTime      time.Time
-	MachineID      func() (int64, error)
-	CheckMachineID func(int64) bool
+	MachineID      func() (int, error)
+	CheckMachineID func(int) bool
 }
 
 // Sonyflake is a distributed unique ID generator.
@@ -48,8 +48,8 @@ type Sonyflake struct {
 	mutex       *sync.Mutex
 	startTime   int64
 	elapsedTime int64
-	sequence    int64
-	machineID   int64
+	sequence    int
+	machine     int
 }
 
 var (
@@ -73,7 +73,7 @@ func New(st Settings) (*Sonyflake, error) {
 
 	sf := new(Sonyflake)
 	sf.mutex = new(sync.Mutex)
-	sf.sequence = int64(1<<BitLenSequence - 1)
+	sf.sequence = 1<<BitLenSequence - 1
 
 	if st.StartTime.IsZero() {
 		sf.startTime = toSonyflakeTime(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -83,15 +83,15 @@ func New(st Settings) (*Sonyflake, error) {
 
 	var err error
 	if st.MachineID == nil {
-		sf.machineID, err = lower16BitPrivateIP(defaultInterfaceAddrs)
+		sf.machine, err = lower16BitPrivateIP(defaultInterfaceAddrs)
 	} else {
-		sf.machineID, err = st.MachineID()
+		sf.machine, err = st.MachineID()
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	if st.CheckMachineID != nil && !st.CheckMachineID(sf.machineID) {
+	if st.CheckMachineID != nil && !st.CheckMachineID(sf.machine) {
 		return nil, ErrInvalidMachineID
 	}
 
@@ -103,7 +103,7 @@ func New(st Settings) (*Sonyflake, error) {
 // NextID generates a next unique ID as int64.
 // After the Sonyflake time overflows, NextID returns an error.
 func (sf *Sonyflake) NextID() (int64, error) {
-	const maskSequence = int64(1<<BitLenSequence - 1)
+	const maskSequence = 1<<BitLenSequence - 1
 
 	sf.mutex.Lock()
 	defer sf.mutex.Unlock()
@@ -112,7 +112,7 @@ func (sf *Sonyflake) NextID() (int64, error) {
 	if sf.elapsedTime < current {
 		sf.elapsedTime = current
 		sf.sequence = 0
-	} else { // sf.elapsedTime >= current
+	} else {
 		sf.sequence = (sf.sequence + 1) & maskSequence
 		if sf.sequence == 0 {
 			sf.elapsedTime++
@@ -144,9 +144,9 @@ func (sf *Sonyflake) toID() (int64, error) {
 		return 0, ErrOverTimeLimit
 	}
 
-	return sf.elapsedTime<<(BitLenSequence+BitLenMachineID) |
-		sf.sequence<<BitLenMachineID |
-		sf.machineID, nil
+	return sf.elapsedTime<<(BitLenSequence+BitLenMachine) |
+		int64(sf.sequence)<<BitLenMachine |
+		int64(sf.machine), nil
 }
 
 func privateIPv4(interfaceAddrs types.InterfaceAddrs) (net.IP, error) {
@@ -175,13 +175,13 @@ func isPrivateIPv4(ip net.IP) bool {
 		(ip[0] == 10 || ip[0] == 172 && (ip[1] >= 16 && ip[1] < 32) || ip[0] == 192 && ip[1] == 168 || ip[0] == 169 && ip[1] == 254)
 }
 
-func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (int64, error) {
+func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (int, error) {
 	ip, err := privateIPv4(interfaceAddrs)
 	if err != nil {
 		return 0, err
 	}
 
-	return int64(ip[2])<<8 + int64(ip[3]), nil
+	return int(ip[2])<<8 + int(ip[3]), nil
 }
 
 // ElapsedTime returns the elapsed time when the given Sonyflake ID was generated.
@@ -190,32 +190,30 @@ func ElapsedTime(id int64) time.Duration {
 }
 
 func elapsedTime(id int64) int64 {
-	return id >> (BitLenSequence + BitLenMachineID)
+	return id >> (BitLenSequence + BitLenMachine)
 }
 
 // SequenceNumber returns the sequence number of a Sonyflake ID.
-func SequenceNumber(id int64) int64 {
-	const maskSequence = int64((1<<BitLenSequence - 1) << BitLenMachineID)
-	return (id & maskSequence) >> BitLenMachineID
+func SequenceNumber(id int64) int {
+	const maskSequence = int64((1<<BitLenSequence - 1) << BitLenMachine)
+	return int((id & maskSequence) >> BitLenMachine)
 }
 
 // MachineID returns the machine ID of a Sonyflake ID.
-func MachineID(id int64) int64 {
-	const maskMachineID = int64(1<<BitLenMachineID - 1)
-	return id & maskMachineID
+func MachineID(id int64) int {
+	const maskMachine = int64(1<<BitLenMachine - 1)
+	return int(id & maskMachine)
 }
 
 // Decompose returns a set of Sonyflake ID parts.
 func Decompose(id int64) map[string]int64 {
-	msb := id >> 63
 	time := elapsedTime(id)
 	sequence := SequenceNumber(id)
-	machineID := MachineID(id)
+	machine := MachineID(id)
 	return map[string]int64{
-		"id":         id,
-		"msb":        msb,
-		"time":       time,
-		"sequence":   sequence,
-		"machine-id": machineID,
+		"id":       id,
+		"time":     time,
+		"sequence": int64(sequence),
+		"machine":  int64(machine),
 	}
 }

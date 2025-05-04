@@ -15,7 +15,7 @@ import (
 var sf *Sonyflake
 
 var startTime int64
-var machineID int64
+var machineID int
 
 func init() {
 	var st Settings
@@ -30,7 +30,7 @@ func init() {
 	startTime = toSonyflakeTime(st.StartTime)
 
 	ip, _ := lower16BitPrivateIP(defaultInterfaceAddrs)
-	machineID = int64(ip)
+	machineID = int(ip)
 }
 
 func nextID(t *testing.T) int64 {
@@ -59,7 +59,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "failure: machine ID",
 			settings: Settings{
-				MachineID: func() (int64, error) {
+				MachineID: func() (int, error) {
 					return 0, genError
 				},
 			},
@@ -68,7 +68,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "failure: invalid machine ID",
 			settings: Settings{
-				CheckMachineID: func(int64) bool {
+				CheckMachineID: func(int) bool {
 					return false
 				},
 			},
@@ -112,7 +112,7 @@ func TestSonyflakeOnce(t *testing.T) {
 	}
 
 	actualMachineID := MachineID(id)
-	if actualMachineID != machineID {
+	if int(actualMachineID) != machineID {
 		t.Errorf("unexpected machine id: %d", actualMachineID)
 	}
 
@@ -162,8 +162,8 @@ func TestSonyflakeFor10Sec(t *testing.T) {
 			maxSequence = actualSequence
 		}
 
-		actualMachineID := parts["machine-id"]
-		if actualMachineID != machineID {
+		actualMachineID := parts["machine"]
+		if int(actualMachineID) != machineID {
 			t.Errorf("unexpected machine id: %d", actualMachineID)
 		}
 	}
@@ -271,7 +271,7 @@ func TestPrivateIPv4(t *testing.T) {
 func TestLower16BitPrivateIP(t *testing.T) {
 	testCases := []struct {
 		description    string
-		expected       int64
+		expected       int
 		interfaceAddrs types.InterfaceAddrs
 		error          string
 	}{
