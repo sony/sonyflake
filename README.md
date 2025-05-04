@@ -44,8 +44,8 @@ You can configure Sonyflake by the struct Settings:
 ```go
 type Settings struct {
 	StartTime      time.Time
-	MachineID      func() (int64, error)
-	CheckMachineID func(int64) bool
+	MachineID      func() (int, error)
+	CheckMachineID func(int) bool
 }
 ```
 
