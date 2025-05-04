@@ -18,10 +18,10 @@ As a result, Sonyflake has the following advantages and disadvantages:
 
 - The lifetime (174 years) is longer than that of Snowflake (69 years)
 - It can work in more distributed machines (2^16) than Snowflake (2^10)
-- It can generate 2^8 IDs per 10 msec at most in a single machine/thread (fewer than Snowflake)
+- It can generate 2^8 IDs per 10 msec at most in a single instance (fewer than Snowflake)
 
 However, if you want more generation rate in a single host,
-you can easily run multiple Sonyflake ID generators concurrently using goroutines.
+you can easily run multiple Sonyflake instances parallelly using goroutines.
 
 Installation
 ------------
