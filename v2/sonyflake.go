@@ -26,16 +26,15 @@ const (
 // Settings configures Sonyflake:
 //
 // StartTime is the time since which the Sonyflake time is defined as the elapsed time.
-// If StartTime is 0, the start time of the Sonyflake is set to "2014-09-01 00:00:00 +0000 UTC".
-// If StartTime is ahead of the current time, Sonyflake is not created.
+// If StartTime is 0, the start time of the Sonyflake instance is set to "2025-01-01 00:00:00 +0000 UTC".
+// StartTime must be before the current time.
 //
-// MachineID returns the unique ID of the Sonyflake instance.
-// If MachineID returns an error, Sonyflake is not created.
-// If MachineID is nil, default MachineID is used.
-// Default MachineID returns the lower 16 bits of the private IP address.
+// MachineID returns the unique ID of a Sonyflake instance.
+// If MachineID returns an error, the instance will not be created.
+// If MachineID is nil, the default MachineID is used, which returns the lower 16 bits of the private IP address.
 //
-// CheckMachineID validates the uniqueness of the machine ID.
-// If CheckMachineID returns false, Sonyflake is not created.
+// CheckMachineID validates the uniqueness of a machine ID.
+// If CheckMachineID returns false, the instance will not be created.
 // If CheckMachineID is nil, no validation is done.
 type Settings struct {
 	StartTime      time.Time
@@ -98,8 +97,6 @@ func New(st Settings) (*Sonyflake, error) {
 	return sf, nil
 }
 
-// NextID generates a next unique ID.
-// After the Sonyflake time overflows, NextID returns an error.
 // NextID generates a next unique ID as int64.
 // After the Sonyflake time overflows, NextID returns an error.
 func (sf *Sonyflake) NextID() (int64, error) {
