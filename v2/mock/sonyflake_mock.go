@@ -3,10 +3,10 @@
 package mock
 
 import (
-	"fmt"
+	"errors"
 	"net"
 
-	"github.com/sony/sonyflake/types"
+	"github.com/sony/sonyflake/v2/types"
 )
 
 // NewSuccessfulInterfaceAddrs returns a single private IP address.
@@ -19,10 +19,12 @@ func NewSuccessfulInterfaceAddrs() types.InterfaceAddrs {
 	}
 }
 
+var ErrFailedToGetAddresses = errors.New("failed to get addresses")
+
 // NewFailingInterfaceAddrs returns an error.
 func NewFailingInterfaceAddrs() types.InterfaceAddrs {
 	return func() ([]net.Addr, error) {
-		return nil, fmt.Errorf("test error")
+		return nil, ErrFailedToGetAddresses
 	}
 }
 

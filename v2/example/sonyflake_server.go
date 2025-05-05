@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/sony/sonyflake"
-	"github.com/sony/sonyflake/awsutil"
+	"github.com/sony/sonyflake/v2"
+	"github.com/sony/sonyflake/v2/awsutil"
 )
 
 var sf *sonyflake.Sonyflake
@@ -13,9 +13,11 @@ var sf *sonyflake.Sonyflake
 func init() {
 	var st sonyflake.Settings
 	st.MachineID = awsutil.AmazonEC2MachineID
-	sf = sonyflake.NewSonyflake(st)
-	if sf == nil {
-		panic("sonyflake not created")
+
+	var err error
+	sf, err = sonyflake.New(st)
+	if err != nil {
+		panic(err)
 	}
 }
 
