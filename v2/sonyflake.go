@@ -198,7 +198,7 @@ func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (int, error) {
 }
 
 func (sf *Sonyflake) ToTime(id int64) time.Time {
-	return time.Unix(0, (sf.startTime+Time(id)) * sf.timeUnit)
+	return time.Unix(0, (sf.startTime+Time(id))*sf.timeUnit)
 }
 
 // Time returns the Sonyflake time when the given ID was generated.

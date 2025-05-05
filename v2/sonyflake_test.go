@@ -234,7 +234,7 @@ func TestNextID_ReturnsError(t *testing.T) {
 func TestToTime(t *testing.T) {
 	start := time.Now()
 	sf := newSonyflake(t, Settings{
-		TimeUnit: time.Millisecond,
+		TimeUnit:  time.Millisecond,
 		StartTime: start,
 	})
 
