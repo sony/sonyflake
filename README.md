@@ -1,7 +1,7 @@
 # Sonyflake
 
-[![GoDoc](https://godoc.org/github.com/sony/sonyflake?status.svg)](http://godoc.org/github.com/sony/sonyflake)
-[![Go Report Card](https://goreportcard.com/badge/github.com/sony/sonyflake)](https://goreportcard.com/report/github.com/sony/sonyflake)
+[![GoDoc](https://godoc.org/github.com/sony/sonyflake/v2?status.svg)](https://pkg.go.dev/github.com/sony/sonyflake/v2)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sony/sonyflake/v2)](https://goreportcard.com/report/github.com/sony/sonyflake/v2)
 
 Sonyflake is a distributed unique ID generator inspired by [Twitter's Snowflake](https://blog.twitter.com/2010/announcing-snowflake).  
 
