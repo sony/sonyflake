@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "invalid bit length for time",
 			settings: Settings{
-				BitsSequence: 16,
+				BitsSequence:  16,
 				BitsMachineID: 16,
 			},
 			err: ErrInvalidBitsTime,
