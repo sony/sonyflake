@@ -28,7 +28,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := json.Marshal(sonyflake.Decompose(id))
+	body, err := json.Marshal(sf.Decompose(id))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
