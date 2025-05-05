@@ -21,6 +21,13 @@ func TestNew(t *testing.T) {
 		err      error
 	}{
 		{
+			name: "invalid time unit",
+			settings: Settings{
+				TimeUnit: time.Microsecond,
+			},
+			err: ErrInvalidTimeUnit,
+		},
+		{
 			name: "start time ahead",
 			settings: Settings{
 				StartTime: time.Now().Add(time.Minute),
@@ -98,7 +105,7 @@ func TestNextID(t *testing.T) {
 
 	id := nextID(t, sf)
 
-	actualTime := ElapsedTime(id)
+	actualTime := Time(id)
 	if actualTime < sleepTime || actualTime > sleepTime+1 {
 		t.Errorf("unexpected time: %d", actualTime)
 	}
@@ -119,7 +126,10 @@ func TestNextID(t *testing.T) {
 
 func TestNextID_InSequence(t *testing.T) {
 	now := time.Now()
-	sf := newSonyflake(t, Settings{StartTime: now})
+	sf := newSonyflake(t, Settings{
+		TimeUnit:  time.Millisecond,
+		StartTime: now,
+	})
 	startTime := sf.toInternalTime(now)
 	machineID := int64(defaultMachineID(t))
 
@@ -218,6 +228,22 @@ func TestNextID_ReturnsError(t *testing.T) {
 	_, err := sf.NextID()
 	if err == nil {
 		t.Errorf("time is not over")
+	}
+}
+
+func TestToTime(t *testing.T) {
+	start := time.Now()
+	sf := newSonyflake(t, Settings{
+		TimeUnit: time.Millisecond,
+		StartTime: start,
+	})
+
+	id := nextID(t, sf)
+
+	tm := sf.ToTime(id)
+	diff := tm.Sub(start)
+	if diff < 0 || diff >= time.Duration(sf.timeUnit) {
+		t.Errorf("unexpected time: %v", tm)
 	}
 }
 

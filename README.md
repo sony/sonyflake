@@ -43,11 +43,16 @@ You can configure Sonyflake by the struct Settings:
 
 ```go
 type Settings struct {
+	TimeUnit       time.Duration
 	StartTime      time.Time
 	MachineID      func() (int, error)
 	CheckMachineID func(int) bool
 }
 ```
+
+- TimeUnit is the time unit of Sonyflake.
+  If TimeUnit is 0, the default time unit is used, which is 10 msec.
+  TimeUnit must be equal to or greater than 1 msec.
 
 - StartTime is the time since which the Sonyflake time is defined as the elapsed time.
   If StartTime is 0, the start time of the Sonyflake instance is set to "2025-01-01 00:00:00 +0000 UTC".
@@ -67,7 +72,7 @@ In order to get a new unique ID, you just have to call the method NextID.
 func (sf *Sonyflake) NextID() (int64, error)
 ```
 
-NextID can continue to generate IDs for about 174 years from StartTime.
+NextID can continue to generate IDs for about 174 years from StartTime by default.
 But after the Sonyflake time is over the limit, NextID returns an error.
 
 AWS VPC and Docker

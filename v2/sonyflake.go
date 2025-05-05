@@ -25,6 +25,10 @@ const (
 
 // Settings configures Sonyflake:
 //
+// TimeUnit is the time unit of Sonyflake.
+// If TimeUnit is 0, the default time unit is used, which is 10 msec.
+// TimeUnit must be equal to or greater than 1 msec.
+//
 // StartTime is the time since which the Sonyflake time is defined as the elapsed time.
 // If StartTime is 0, the start time of the Sonyflake instance is set to "2025-01-01 00:00:00 +0000 UTC".
 // StartTime must be before the current time.
@@ -193,8 +197,12 @@ func lower16BitPrivateIP(interfaceAddrs types.InterfaceAddrs) (int, error) {
 	return int(ip[2])<<8 + int(ip[3]), nil
 }
 
-// ElapsedTime returns the elapsed time in Sonyflake time since the given ID was generated.
-func ElapsedTime(id int64) int64 {
+func (sf *Sonyflake) ToTime(id int64) time.Time {
+	return time.Unix(0, (sf.startTime+Time(id)) * sf.timeUnit)
+}
+
+// Time returns the Sonyflake time when the given ID was generated.
+func Time(id int64) int64 {
 	return id >> (BitLenSequence + BitLenMachine)
 }
 
@@ -212,7 +220,7 @@ func MachineID(id int64) int {
 
 // Decompose returns a set of Sonyflake ID parts.
 func Decompose(id int64) map[string]int64 {
-	time := ElapsedTime(id)
+	time := Time(id)
 	sequence := SequenceNumber(id)
 	machine := MachineID(id)
 	return map[string]int64{
