@@ -1,5 +1,4 @@
-Sonyflake
-=========
+# Sonyflake
 
 [![GoDoc](https://godoc.org/github.com/sony/sonyflake?status.svg)](http://godoc.org/github.com/sony/sonyflake)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sony/sonyflake)](https://goreportcard.com/report/github.com/sony/sonyflake)
@@ -8,7 +7,7 @@ Sonyflake is a distributed unique ID generator inspired by [Twitter's Snowflake]
 
 Sonyflake focuses on lifetime and performance on many host/core environment.
 So it has a different bit assignment from Snowflake.
-A Sonyflake ID is composed of
+By default, a Sonyflake ID is composed of
 
     39 bits for time in units of 10 msec
      8 bits for a sequence number
@@ -23,15 +22,16 @@ As a result, Sonyflake has the following advantages and disadvantages:
 However, if you want more generation rate in a single host,
 you can easily run multiple Sonyflake instances parallelly using goroutines.
 
-Installation
-------------
+In addition, you can adjust the lifetime and generation rate of Sonyflake
+by customizing the bit assignment and the time unit.
+
+## Installation
 
 ```
 go get github.com/sony/sonyflake/v2
 ```
 
-Usage
------
+## Usage
 
 The function New creates a new Sonyflake instance.
 
@@ -43,6 +43,8 @@ You can configure Sonyflake by the struct Settings:
 
 ```go
 type Settings struct {
+	BitsSequence   int
+	BitsMachineID  int
 	TimeUnit       time.Duration
 	StartTime      time.Time
 	MachineID      func() (int, error)
@@ -50,9 +52,17 @@ type Settings struct {
 }
 ```
 
+- BitsSequence is the bit length of a sequence number.
+  If BitsSequence is 0, the default bit length is used, which is 8.
+  If BitsSequence is 31 or more, an error is returned.
+
+- BitsMachineID is the bit length of a machine ID.
+  If BitsMachineID is 0, the default bit length is used, which is 16.
+  If BitsMachineID is 31 or more, an error is returned.
+
 - TimeUnit is the time unit of Sonyflake.
   If TimeUnit is 0, the default time unit is used, which is 10 msec.
-  TimeUnit must be equal to or greater than 1 msec.
+  TimeUnit must be 1 msec or longer.
 
 - StartTime is the time since which the Sonyflake time is defined as the elapsed time.
   If StartTime is 0, the start time of the Sonyflake instance is set to "2025-01-01 00:00:00 +0000 UTC".
@@ -66,6 +76,9 @@ type Settings struct {
   If CheckMachineID returns false, the instance will not be created.
   If CheckMachineID is nil, no validation is done.
 
+The bit length of time is calculated by 63 - BitsSequence - BitsMachineID.
+If it is less than 32, an error is returned.
+
 In order to get a new unique ID, you just have to call the method NextID.
 
 ```go
@@ -75,8 +88,7 @@ func (sf *Sonyflake) NextID() (int64, error)
 NextID can continue to generate IDs for about 174 years from StartTime by default.
 But after the Sonyflake time is over the limit, NextID returns an error.
 
-AWS VPC and Docker
-------------------
+## AWS VPC and Docker
 
 The [awsutil](https://github.com/sony/sonyflake/blob/master/v2/awsutil) package provides
 the function AmazonEC2MachineID that returns the lower 16-bit private IP address of the Amazon EC2 instance.
@@ -91,8 +103,7 @@ In this common case, you can use AmazonEC2MachineID as Settings.MachineID.
 
 See [example](https://github.com/sony/sonyflake/blob/master/v2/example) that runs Sonyflake on AWS Elastic Beanstalk.
 
-License
--------
+## License
 
 The MIT License (MIT)
 

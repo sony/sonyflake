@@ -21,6 +21,28 @@ func TestNew(t *testing.T) {
 		err      error
 	}{
 		{
+			name: "invalid bit length for time",
+			settings: Settings{
+				BitsSequence: 16,
+				BitsMachineID: 16,
+			},
+			err: ErrInvalidBitsTime,
+		},
+		{
+			name: "invalid bit length for sequence number",
+			settings: Settings{
+				BitsSequence: -1,
+			},
+			err: ErrInvalidBitsSequence,
+		},
+		{
+			name: "invalid bit length for machine id",
+			settings: Settings{
+				BitsMachineID: 31,
+			},
+			err: ErrInvalidBitsMachineID,
+		},
+		{
 			name: "invalid time unit",
 			settings: Settings{
 				TimeUnit: time.Microsecond,
@@ -105,23 +127,23 @@ func TestNextID(t *testing.T) {
 
 	id := nextID(t, sf)
 
-	actualTime := Time(id)
+	actualTime := sf.timePart(id)
 	if actualTime < sleepTime || actualTime > sleepTime+1 {
 		t.Errorf("unexpected time: %d", actualTime)
 	}
 
-	actualSequence := SequenceNumber(id)
+	actualSequence := sf.sequencePart(id)
 	if actualSequence != 0 {
 		t.Errorf("unexpected sequence: %d", actualSequence)
 	}
 
-	actualMachine := MachineID(id)
-	if actualMachine != defaultMachineID(t) {
+	actualMachine := sf.machinePart(id)
+	if actualMachine != int64(defaultMachineID(t)) {
 		t.Errorf("unexpected machine: %d", actualMachine)
 	}
 
 	fmt.Println("sonyflake id:", id)
-	fmt.Println("decompose:", Decompose(id))
+	fmt.Println("decompose:", sf.Decompose(id))
 }
 
 func TestNextID_InSequence(t *testing.T) {
@@ -151,7 +173,7 @@ func TestNextID_InSequence(t *testing.T) {
 		}
 		lastID = id
 
-		parts := Decompose(id)
+		parts := sf.Decompose(id)
 
 		actualTime := parts["time"]
 		overtime := startTime + actualTime - currentTime
@@ -170,7 +192,7 @@ func TestNextID_InSequence(t *testing.T) {
 		}
 	}
 
-	if maxSeq != 1<<BitLenSequence-1 {
+	if maxSeq != 1<<sf.bitsSequence-1 {
 		t.Errorf("unexpected max sequence: %d", maxSeq)
 	}
 	fmt.Println("max sequence:", maxSeq)
