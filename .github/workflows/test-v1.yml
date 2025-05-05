@@ -5,12 +5,14 @@ on:
     paths-ignore:
       - README.md
       - .github/workflows/test-v2.yml
-      - 'v2/**'
+      - v2/**
   pull_request:
     paths-ignore:
       - README.md
       - .github/workflows/test-v2.yml
-      - 'v2/**'
+      - v2/**
+
+permissions: read-all
 
 jobs:
   test-v1:
@@ -30,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: ${{matrix.go-version}}
 

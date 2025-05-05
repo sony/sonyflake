@@ -5,12 +5,14 @@ on:
     paths:
       - README.md
       - .github/workflows/test-v2.yml
-      - 'v2/**'
+      - v2/**
   pull_request:
     paths:
       - README.md
       - .github/workflows/test-v2.yml
-      - 'v2/**'
+      - v2/**
+
+permissions: read-all
 
 jobs:
   test-v2:
