@@ -253,22 +253,6 @@ func TestNextID_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestToTime(t *testing.T) {
-	start := time.Now()
-	sf := newSonyflake(t, Settings{
-		TimeUnit:  time.Millisecond,
-		StartTime: start,
-	})
-
-	id := nextID(t, sf)
-
-	tm := sf.ToTime(id)
-	diff := tm.Sub(start)
-	if diff < 0 || diff >= time.Duration(sf.timeUnit) {
-		t.Errorf("unexpected time: %v", tm)
-	}
-}
-
 func TestPrivateIPv4(t *testing.T) {
 	testCases := []struct {
 		description    string
@@ -347,6 +331,90 @@ func TestLower16BitPrivateIP(t *testing.T) {
 
 			if actual != tc.expected {
 				t.Errorf("unexpected ip: %d", actual)
+			}
+		})
+	}
+}
+
+func TestToTime(t *testing.T) {
+	start := time.Now()
+	sf := newSonyflake(t, Settings{
+		TimeUnit:  time.Millisecond,
+		StartTime: start,
+	})
+
+	id := nextID(t, sf)
+
+	tm := sf.ToTime(id)
+	diff := tm.Sub(start)
+	if diff < 0 || diff >= time.Duration(sf.timeUnit) {
+		t.Errorf("unexpected time: %v", tm)
+	}
+}
+
+func TestComposeAndDecompose(t *testing.T) {
+	now := time.Now()
+	sf := newSonyflake(t, Settings{
+		TimeUnit:  time.Millisecond,
+		StartTime: now,
+	})
+
+	testCases := []struct {
+		name      string
+		time      time.Time
+		sequence  int
+		machineID int
+	}{
+		{
+			name:      "zero values",
+			time:      now,
+			sequence:  0,
+			machineID: 0,
+		},
+		{
+			name:      "max sequence",
+			time:      now,
+			sequence:  1<<sf.bitsSequence - 1,
+			machineID: 0,
+		},
+		{
+			name:      "max machine id",
+			time:      now,
+			sequence:  0,
+			machineID: 1<<sf.bitsMachine - 1,
+		},
+		{
+			name:      "future time",
+			time:      now.Add(time.Hour),
+			sequence:  0,
+			machineID: 0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			id := sf.Compose(tc.time, tc.sequence, tc.machineID)
+			parts := sf.Decompose(id)
+
+			// Verify time part
+			expectedTime := sf.toInternalTime(tc.time.UTC()) - sf.startTime
+			if parts["time"] != expectedTime {
+				t.Errorf("time mismatch: got %d, want %d", parts["time"], expectedTime)
+			}
+
+			// Verify sequence part
+			if parts["sequence"] != int64(tc.sequence) {
+				t.Errorf("sequence mismatch: got %d, want %d", parts["sequence"], tc.sequence)
+			}
+
+			// Verify machine id part
+			if parts["machine"] != int64(tc.machineID) {
+				t.Errorf("machine id mismatch: got %d, want %d", parts["machine"], tc.machineID)
+			}
+
+			// Verify id part
+			if parts["id"] != id {
+				t.Errorf("id mismatch: got %d, want %d", parts["id"], id)
 			}
 		})
 	}
