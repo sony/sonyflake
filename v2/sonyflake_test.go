@@ -3,6 +3,7 @@ package sonyflake
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"runtime"
 	"testing"
@@ -417,5 +418,30 @@ func TestComposeAndDecompose(t *testing.T) {
 				t.Errorf("id mismatch: got %d, want %d", parts["id"], id)
 			}
 		})
+	}
+}
+
+func TestBigMachineDoesntBreakID(t *testing.T) {
+	start := time.Now()
+	sf := newSonyflake(t, Settings{
+		TimeUnit:  time.Millisecond,
+		StartTime: start,
+		MachineID: func() (int, error) {
+			return math.MaxInt, nil
+		},
+	})
+
+	id := nextID(t, sf)
+	parts := sf.Decompose(id)
+
+	if parts["sequence"] != 0 {
+		t.Errorf("next id sequence mismatch: got %d, want %d", parts["sequence"], 0)
+	}
+
+	id = sf.Compose(time.Now(), 0, math.MaxInt)
+	parts = sf.Decompose(id)
+
+	if parts["sequence"] != 0 {
+		t.Errorf("decompose sequence mismatch: got %d, want %d", parts["sequence"], 0)
 	}
 }
