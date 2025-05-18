@@ -66,6 +66,24 @@ func TestNew(t *testing.T) {
 			err: errGetMachineID,
 		},
 		{
+			name: "too large machine id",
+			settings: Settings{
+				MachineID: func() (int, error) {
+					return 1 << defaultBitsMachine, nil
+				},
+			},
+			err: ErrInvalidMachineID,
+		},
+		{
+			name: "negative machine id",
+			settings: Settings{
+				MachineID: func() (int, error) {
+					return -1, nil
+				},
+			},
+			err: ErrInvalidMachineID,
+		},
+		{
 			name: "invalid machine id",
 			settings: Settings{
 				CheckMachineID: func(int) bool {
