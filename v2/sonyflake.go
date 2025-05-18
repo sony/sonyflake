@@ -256,6 +256,17 @@ func (sf *Sonyflake) ToTime(id int64) time.Time {
 	return time.Unix(0, (sf.startTime+sf.timePart(id))*sf.timeUnit)
 }
 
+// Compose creates a Sonyflake ID from its components.
+// The time parameter should be the time when the ID was generated.
+// The sequence parameter should be between 0 and 2^BitsSequence-1 (inclusive).
+// The machineID parameter should be between 0 and 2^BitsMachineID-1 (inclusive).
+func (sf *Sonyflake) Compose(t time.Time, sequence, machineID int) int64 {
+	elapsedTime := sf.toInternalTime(t.UTC()) - sf.startTime
+	return elapsedTime<<(sf.bitsSequence+sf.bitsMachine) |
+		int64(sequence)<<sf.bitsMachine |
+		int64(machineID)
+}
+
 // Decompose returns a set of Sonyflake ID parts.
 func (sf *Sonyflake) Decompose(id int64) map[string]int64 {
 	time := sf.timePart(id)
