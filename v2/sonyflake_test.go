@@ -257,10 +257,11 @@ func pseudoSleep(sf *Sonyflake, period time.Duration) {
 	sf.startTime -= int64(period) / sf.timeUnit
 }
 
+const year = time.Duration(365*24) * time.Hour
+
 func TestNextID_ReturnsError(t *testing.T) {
 	sf := newSonyflake(t, Settings{StartTime: time.Now()})
 
-	year := time.Duration(365*24) * time.Hour
 	pseudoSleep(sf, time.Duration(174)*year)
 	nextID(t, sf)
 
@@ -411,7 +412,11 @@ func TestComposeAndDecompose(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			id := sf.Compose(tc.time, tc.sequence, tc.machineID)
+			id, err := sf.Compose(tc.time, tc.sequence, tc.machineID)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
 			parts := sf.Decompose(id)
 
 			// Verify time part
@@ -433,6 +438,57 @@ func TestComposeAndDecompose(t *testing.T) {
 			// Verify id part
 			if parts["id"] != id {
 				t.Errorf("id mismatch: got %d, want %d", parts["id"], id)
+			}
+		})
+	}
+}
+
+func TestCompose_ReturnsError(t *testing.T) {
+	start := time.Now()
+	sf := newSonyflake(t, Settings{StartTime: start})
+
+	testCases := []struct {
+		name      string
+		time      time.Time
+		sequence  int
+		machineID int
+		err       error
+	}{
+		{
+			name:      "start time ahead",
+			time:      start.Add(-time.Second),
+			sequence:  0,
+			machineID: 0,
+			err:       ErrStartTimeAhead,
+		},
+		{
+			name:      "over time limit",
+			time:      start.Add(time.Duration(175) * year),
+			sequence:  0,
+			machineID: 0,
+			err:       ErrOverTimeLimit,
+		},
+		{
+			name:      "invalid sequence",
+			time:      start,
+			sequence:  1 << sf.bitsSequence,
+			machineID: 0,
+			err:       ErrInvalidSequence,
+		},
+		{
+			name:      "invalid machine id",
+			time:      start,
+			sequence:  0,
+			machineID: 1 << sf.bitsMachine,
+			err:       ErrInvalidMachineID,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := sf.Compose(tc.time, tc.sequence, tc.machineID)
+			if !errors.Is(err, tc.err) {
+				t.Errorf("unexpected error: %v", err)
 			}
 		})
 	}

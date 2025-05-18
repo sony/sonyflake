@@ -74,8 +74,9 @@ var (
 	ErrInvalidBitsSequence  = errors.New("invalid bit length for sequence number")
 	ErrInvalidBitsMachineID = errors.New("invalid bit length for machine id")
 	ErrInvalidTimeUnit      = errors.New("invalid time unit")
+	ErrInvalidSequence      = errors.New("invalid sequence number")
 	ErrInvalidMachineID     = errors.New("invalid machine id")
-	ErrStartTimeAhead       = errors.New("start time is ahead of now")
+	ErrStartTimeAhead       = errors.New("start time is ahead")
 	ErrOverTimeLimit        = errors.New("over the time limit")
 	ErrNoPrivateAddress     = errors.New("no private ip address")
 )
@@ -260,11 +261,26 @@ func (sf *Sonyflake) ToTime(id int64) time.Time {
 // The time parameter should be the time when the ID was generated.
 // The sequence parameter should be between 0 and 2^BitsSequence-1 (inclusive).
 // The machineID parameter should be between 0 and 2^BitsMachineID-1 (inclusive).
-func (sf *Sonyflake) Compose(t time.Time, sequence, machineID int) int64 {
+func (sf *Sonyflake) Compose(t time.Time, sequence, machineID int) (int64, error) {
 	elapsedTime := sf.toInternalTime(t.UTC()) - sf.startTime
+	if elapsedTime < 0 {
+		return 0, ErrStartTimeAhead
+	}
+	if elapsedTime >= 1<<sf.bitsTime {
+		return 0, ErrOverTimeLimit
+	}
+
+	if sequence < 0 || sequence >= 1<<sf.bitsSequence {
+		return 0, ErrInvalidSequence
+	}
+
+	if machineID < 0 || machineID >= 1<<sf.bitsMachine {
+		return 0, ErrInvalidMachineID
+	}
+
 	return elapsedTime<<(sf.bitsSequence+sf.bitsMachine) |
 		int64(sequence)<<sf.bitsMachine |
-		int64(machineID)
+		int64(machineID), nil
 }
 
 // Decompose returns a set of Sonyflake ID parts.
