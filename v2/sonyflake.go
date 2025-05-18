@@ -213,7 +213,7 @@ func (sf *Sonyflake) toID() (int64, error) {
 
 	return sf.elapsedTime<<(sf.bitsSequence+sf.bitsMachine) |
 		int64(sf.sequence)<<sf.bitsMachine |
-		int64(sf.machine), nil
+		(int64(sf.machine) & ((1 << sf.bitsMachine) - 1)), nil
 }
 
 func privateIPv4(interfaceAddrs types.InterfaceAddrs) (net.IP, error) {
@@ -264,7 +264,7 @@ func (sf *Sonyflake) Compose(t time.Time, sequence, machineID int) int64 {
 	elapsedTime := sf.toInternalTime(t.UTC()) - sf.startTime
 	return elapsedTime<<(sf.bitsSequence+sf.bitsMachine) |
 		int64(sequence)<<sf.bitsMachine |
-		int64(machineID)
+		(int64(machineID) & ((1 << sf.bitsMachine) - 1))
 }
 
 // Decompose returns a set of Sonyflake ID parts.
