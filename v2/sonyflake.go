@@ -157,6 +157,10 @@ func New(st Settings) (*Sonyflake, error) {
 		return nil, err
 	}
 
+	if sf.machine < 0 || sf.machine >= 1<<sf.bitsMachine {
+		return nil, ErrInvalidMachineID
+	}
+
 	if st.CheckMachineID != nil && !st.CheckMachineID(sf.machine) {
 		return nil, ErrInvalidMachineID
 	}
