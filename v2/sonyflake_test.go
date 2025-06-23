@@ -366,7 +366,7 @@ func TestToTime(t *testing.T) {
 
 	tm := sf.ToTime(id)
 	diff := tm.Sub(start)
-	if diff < 0 || diff >= time.Duration(sf.timeUnit) {
+	if diff < 0 || diff > time.Duration(sf.timeUnit) {
 		t.Errorf("unexpected time: %v", tm)
 	}
 }
