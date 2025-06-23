@@ -358,7 +358,7 @@ func TestLower16BitPrivateIP(t *testing.T) {
 func TestToTime(t *testing.T) {
 	start := time.Now()
 	sf := newSonyflake(t, Settings{
-		TimeUnit:  time.Millisecond,
+		TimeUnit:  100 * time.Millisecond,
 		StartTime: start,
 	})
 
