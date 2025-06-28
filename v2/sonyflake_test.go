@@ -138,15 +138,16 @@ func defaultMachineID(t *testing.T) int {
 }
 
 func TestNextID(t *testing.T) {
-	sf := newSonyflake(t, Settings{StartTime: time.Now()})
+	start := time.Now()
+	sf := newSonyflake(t, Settings{StartTime: start})
 
 	sleepTime := int64(50)
-	time.Sleep(time.Duration(sleepTime * sf.timeUnit))
+	sf.now = func() time.Time { return start.Add(time.Duration(sleepTime * sf.timeUnit)) }
 
 	id := nextID(t, sf)
 
 	actualTime := sf.timePart(id)
-	if actualTime < sleepTime || actualTime > sleepTime+1 {
+	if actualTime != sleepTime {
 		t.Errorf("unexpected time: %d", actualTime)
 	}
 
