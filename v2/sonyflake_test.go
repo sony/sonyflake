@@ -358,16 +358,17 @@ func TestLower16BitPrivateIP(t *testing.T) {
 func TestToTime(t *testing.T) {
 	start := time.Now()
 	sf := newSonyflake(t, Settings{
-		TimeUnit:  100 * time.Millisecond,
+		TimeUnit:  time.Millisecond,
 		StartTime: start,
 	})
 
+	sf.now = func() time.Time { return start }
 	id := nextID(t, sf)
 
 	tm := sf.ToTime(id)
 	diff := tm.Sub(start)
-	if diff < 0 || diff > time.Duration(sf.timeUnit) {
-		t.Errorf("unexpected time: %v", tm)
+	if diff < 0 || diff >= time.Duration(sf.timeUnit) {
+		t.Errorf("unexpected time: %v", diff)
 	}
 }
 
