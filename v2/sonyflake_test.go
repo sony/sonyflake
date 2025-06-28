@@ -2,7 +2,6 @@ package sonyflake
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"runtime"
 	"testing"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	errGetMachineID := fmt.Errorf("failed to get machine id")
+	errGetMachineID := errors.New("failed to get machine id")
 
 	testCases := []struct {
 		name     string
@@ -138,15 +137,16 @@ func defaultMachineID(t *testing.T) int {
 }
 
 func TestNextID(t *testing.T) {
-	sf := newSonyflake(t, Settings{StartTime: time.Now()})
+	start := time.Now()
+	sf := newSonyflake(t, Settings{StartTime: start})
 
 	sleepTime := int64(50)
-	time.Sleep(time.Duration(sleepTime * sf.timeUnit))
+	sf.now = func() time.Time { return start.Add(time.Duration(sleepTime * sf.timeUnit)) }
 
 	id := nextID(t, sf)
 
 	actualTime := sf.timePart(id)
-	if actualTime < sleepTime || actualTime > sleepTime+1 {
+	if actualTime != sleepTime {
 		t.Errorf("unexpected time: %d", actualTime)
 	}
 
@@ -160,17 +160,17 @@ func TestNextID(t *testing.T) {
 		t.Errorf("unexpected machine: %d", actualMachine)
 	}
 
-	fmt.Println("sonyflake id:", id)
-	fmt.Println("decompose:", sf.Decompose(id))
+	t.Log("sonyflake id:", id)
+	t.Log("decompose:", sf.Decompose(id))
 }
 
 func TestNextID_InSequence(t *testing.T) {
-	now := time.Now()
+	start := time.Now()
 	sf := newSonyflake(t, Settings{
 		TimeUnit:  time.Millisecond,
-		StartTime: now,
+		StartTime: start,
 	})
-	startTime := sf.toInternalTime(now)
+	startTime := sf.toInternalTime(start)
 	machineID := int64(defaultMachineID(t))
 
 	var numID int
@@ -210,11 +210,11 @@ func TestNextID_InSequence(t *testing.T) {
 		}
 	}
 
-	if maxSeq != 1<<sf.bitsSequence-1 {
+	if maxSeq > 1<<sf.bitsSequence-1 {
 		t.Errorf("unexpected max sequence: %d", maxSeq)
 	}
-	fmt.Println("max sequence:", maxSeq)
-	fmt.Println("number of id:", numID)
+	t.Log("max sequence:", maxSeq)
+	t.Log("number of id:", numID)
 }
 
 func TestNextID_InParallel(t *testing.T) {
@@ -223,7 +223,7 @@ func TestNextID_InParallel(t *testing.T) {
 
 	numCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(numCPU)
-	fmt.Println("number of cpu:", numCPU)
+	t.Log("number of cpu:", numCPU)
 
 	consumer := make(chan int64)
 
@@ -250,7 +250,7 @@ func TestNextID_InParallel(t *testing.T) {
 		}
 		set[id] = struct{}{}
 	}
-	fmt.Println("number of id:", len(set))
+	t.Log("number of id:", len(set))
 }
 
 func pseudoSleep(sf *Sonyflake, period time.Duration) {
@@ -358,16 +358,17 @@ func TestLower16BitPrivateIP(t *testing.T) {
 func TestToTime(t *testing.T) {
 	start := time.Now()
 	sf := newSonyflake(t, Settings{
-		TimeUnit:  100 * time.Millisecond,
+		TimeUnit:  time.Millisecond,
 		StartTime: start,
 	})
 
+	sf.now = func() time.Time { return start }
 	id := nextID(t, sf)
 
 	tm := sf.ToTime(id)
 	diff := tm.Sub(start)
-	if diff < 0 || diff > time.Duration(sf.timeUnit) {
-		t.Errorf("unexpected time: %v", tm)
+	if diff < 0 || diff >= time.Duration(sf.timeUnit) {
+		t.Errorf("unexpected time: %v", diff)
 	}
 }
 

@@ -67,6 +67,8 @@ type Sonyflake struct {
 
 	sequence int
 	machine  int
+
+	now func() time.Time
 }
 
 var (
@@ -116,6 +118,7 @@ func New(st Settings) (*Sonyflake, error) {
 
 	sf := new(Sonyflake)
 	sf.mutex = new(sync.Mutex)
+	sf.now = time.Now
 
 	if st.BitsSequence == 0 {
 		sf.bitsSequence = defaultBitsSequence
@@ -198,12 +201,12 @@ func (sf *Sonyflake) toInternalTime(t time.Time) int64 {
 }
 
 func (sf *Sonyflake) currentElapsedTime() int64 {
-	return sf.toInternalTime(time.Now()) - sf.startTime
+	return sf.toInternalTime(sf.now()) - sf.startTime
 }
 
 func (sf *Sonyflake) sleep(overtime int64) {
 	sleepTime := time.Duration(overtime*sf.timeUnit) -
-		time.Duration(time.Now().UTC().UnixNano()%sf.timeUnit)
+		time.Duration(sf.now().UTC().UnixNano()%sf.timeUnit)
 	time.Sleep(sleepTime)
 }
 
