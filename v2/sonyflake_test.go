@@ -2,7 +2,6 @@ package sonyflake
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"runtime"
 	"testing"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	errGetMachineID := fmt.Errorf("failed to get machine id")
+	errGetMachineID := errors.New("failed to get machine id")
 
 	testCases := []struct {
 		name     string
@@ -161,8 +160,8 @@ func TestNextID(t *testing.T) {
 		t.Errorf("unexpected machine: %d", actualMachine)
 	}
 
-	fmt.Println("sonyflake id:", id)
-	fmt.Println("decompose:", sf.Decompose(id))
+	t.Log("sonyflake id:", id)
+	t.Log("decompose:", sf.Decompose(id))
 }
 
 func TestNextID_InSequence(t *testing.T) {
@@ -214,8 +213,8 @@ func TestNextID_InSequence(t *testing.T) {
 	if maxSeq > 1<<sf.bitsSequence-1 {
 		t.Errorf("unexpected max sequence: %d", maxSeq)
 	}
-	fmt.Println("max sequence:", maxSeq)
-	fmt.Println("number of id:", numID)
+	t.Log("max sequence:", maxSeq)
+	t.Log("number of id:", numID)
 }
 
 func TestNextID_InParallel(t *testing.T) {
@@ -224,7 +223,7 @@ func TestNextID_InParallel(t *testing.T) {
 
 	numCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(numCPU)
-	fmt.Println("number of cpu:", numCPU)
+	t.Log("number of cpu:", numCPU)
 
 	consumer := make(chan int64)
 
@@ -251,7 +250,7 @@ func TestNextID_InParallel(t *testing.T) {
 		}
 		set[id] = struct{}{}
 	}
-	fmt.Println("number of id:", len(set))
+	t.Log("number of id:", len(set))
 }
 
 func pseudoSleep(sf *Sonyflake, period time.Duration) {
