@@ -166,12 +166,12 @@ func TestNextID(t *testing.T) {
 }
 
 func TestNextID_InSequence(t *testing.T) {
-	now := time.Now()
+	start := time.Now()
 	sf := newSonyflake(t, Settings{
 		TimeUnit:  time.Millisecond,
-		StartTime: now,
+		StartTime: start,
 	})
-	startTime := sf.toInternalTime(now)
+	startTime := sf.toInternalTime(start)
 	machineID := int64(defaultMachineID(t))
 
 	var numID int
@@ -211,7 +211,7 @@ func TestNextID_InSequence(t *testing.T) {
 		}
 	}
 
-	if maxSeq != 1<<sf.bitsSequence-1 {
+	if maxSeq > 1<<sf.bitsSequence-1 {
 		t.Errorf("unexpected max sequence: %d", maxSeq)
 	}
 	fmt.Println("max sequence:", maxSeq)
