@@ -312,3 +312,36 @@ func TestSonyflakeTimeUnit(t *testing.T) {
 		t.Errorf("unexpected time unit")
 	}
 }
+
+func TestCompose(t *testing.T) {
+	var st Settings
+	st.StartTime = time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	sf, err := New(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now()
+	sequence := uint16(123)
+	machineID := uint16(456)
+
+	id, err := Compose(sf, now, sequence, machineID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parts := Decompose(id)
+
+	actualTime := toSonyflakeTime(now) - toSonyflakeTime(st.StartTime)
+	if parts["time"] != uint64(actualTime) {
+		t.Errorf("unexpected time: %d", parts["time"])
+	}
+
+	if parts["sequence"] != uint64(sequence) {
+		t.Errorf("unexpected sequence: %d", parts["sequence"])
+	}
+
+	if parts["machine-id"] != uint64(machineID) {
+		t.Errorf("unexpected machine id: %d", parts["machine-id"])
+	}
+}
