@@ -172,6 +172,15 @@ func New(st Settings) (*Sonyflake, error) {
 	return sf, nil
 }
 
+// Default creates and returns a new Sonyflake instance using the default configuration.
+//
+// It is equivalent to calling:
+//
+//	New(Settings{})
+func Default() (*Sonyflake, error) {
+	return New(Settings{})
+}
+
 // NextID generates a next unique ID as int64.
 // After the Sonyflake time overflows, NextID returns an error.
 func (sf *Sonyflake) NextID() (int64, error) {
