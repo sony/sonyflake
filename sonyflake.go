@@ -99,6 +99,15 @@ func New(st Settings) (*Sonyflake, error) {
 	return sf, nil
 }
 
+// Default creates and returns a new Sonyflake instance using the default configuration.
+//
+// It is equivalent to calling:
+//
+//	New(Settings{})
+func Default() (*Sonyflake, error) {
+	return New(Settings{})
+}
+
 // NewSonyflake returns a new Sonyflake configured with the given Settings.
 // NewSonyflake returns nil in the following cases:
 // - Settings.StartTime is ahead of the current time.
@@ -107,6 +116,15 @@ func New(st Settings) (*Sonyflake, error) {
 func NewSonyflake(st Settings) *Sonyflake {
 	sf, _ := New(st)
 	return sf
+}
+
+// DefaultSonyflake creates and returns a new Sonyflake instance using the default Settings.
+//
+// It is equivalent to calling:
+//
+//	NewSonyflake(Settings{})
+func DefaultSonyflake() *Sonyflake {
+	return NewSonyflake(Settings{})
 }
 
 // NextID generates a next unique ID.
