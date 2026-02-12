@@ -34,3 +34,13 @@ func NewNilInterfaceAddrs() types.InterfaceAddrs {
 		return []net.Addr{}, nil
 	}
 }
+
+// NewInterfaceAddrsWithIP returns a private IP address with the given IP.
+func NewInterfaceAddrsWithIP(ip net.IP) types.InterfaceAddrs {
+	ifat := make([]net.Addr, 0, 1)
+	ifat = append(ifat, &net.IPNet{IP: ip, Mask: []byte{255, 0, 0, 0}})
+
+	return func() ([]net.Addr, error) {
+		return ifat, nil
+	}
+}

@@ -36,7 +36,8 @@ import (
 //
 // MachineID returns the unique ID of a Sonyflake instance.
 // If MachineID returns an error, the instance will not be created.
-// If MachineID is nil, the default MachineID is used, which returns the lower 16 bits of the private IP address.
+// If MachineID is nil, the default MachineID is used, which returns the lower bits
+// of the private IP address, masked to fit within BitsMachineID bits.
 //
 // CheckMachineID validates the uniqueness of a machine ID.
 // If CheckMachineID returns false, the instance will not be created.
@@ -154,6 +155,10 @@ func New(st Settings) (*Sonyflake, error) {
 	var err error
 	if st.MachineID == nil {
 		sf.machine, err = lower16BitPrivateIP(defaultInterfaceAddrs)
+		if err == nil {
+			// Mask to use only the required number of bits
+			sf.machine = sf.machine & (1<<sf.bitsMachine - 1)
+		}
 	} else {
 		sf.machine, err = st.MachineID()
 	}
