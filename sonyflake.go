@@ -8,8 +8,13 @@
 package sonyflake
 
 import (
+	"database/sql"
+	"database/sql/driver"
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -133,6 +138,13 @@ func (sf *Sonyflake) NextID() (uint64, error) {
 	return sf.toID()
 }
 
+// Next generates a next unique ID as an ID.
+// After the Sonyflake time overflows, Next returns an error.
+func (sf *Sonyflake) Next() (ID, error) {
+	id, err := sf.NextID()
+	return ID(id), err
+}
+
 const sonyflakeTimeUnit = 1e7 // nsec, i.e. 10 msec
 
 func toSonyflakeTime(t time.Time) int64 {
@@ -245,5 +257,180 @@ func Decompose(id uint64) map[string]uint64 {
 		"time":       time,
 		"sequence":   sequence,
 		"machine-id": machineID,
+	}
+}
+
+// ID represents a Sonyflake ID.
+type ID uint64
+
+// SonyflakeID is an alias for ID.
+type SonyflakeID = ID
+
+var (
+	_ sql.Scanner   = (*ID)(nil)
+	_ driver.Valuer = ID(0)
+)
+
+// String returns the decimal string representation of the ID.
+func (id ID) String() string {
+	return strconv.FormatUint(uint64(id), 10)
+}
+
+// Int64 returns the ID as an int64.
+func (id ID) Int64() int64 {
+	return int64(id)
+}
+
+// Uint64 returns the ID as a uint64.
+func (id ID) Uint64() uint64 {
+	return uint64(id)
+}
+
+// ElapsedTime returns the elapsed time when the ID was generated.
+func (id ID) ElapsedTime() time.Duration {
+	return ElapsedTime(uint64(id))
+}
+
+// SequenceNumber returns the sequence number of the ID.
+func (id ID) SequenceNumber() uint64 {
+	return SequenceNumber(uint64(id))
+}
+
+// MachineID returns the machine ID of the ID.
+func (id ID) MachineID() uint64 {
+	return MachineID(uint64(id))
+}
+
+// Decompose returns a set of ID parts.
+func (id ID) Decompose() map[string]uint64 {
+	return Decompose(uint64(id))
+}
+
+// ParseID parses a decimal string representation into an ID.
+func ParseID(s string) (ID, error) {
+	if s == "" {
+		return 0, errors.New("sonyflake: empty ID string")
+	}
+	n, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("sonyflake: invalid ID %q: %w", s, err)
+	}
+	return ID(n), nil
+}
+
+// Value implements the database/sql/driver.Valuer interface.
+// It returns the ID as an int64 suitable for SQL BIGINT storage.
+func (id ID) Value() (driver.Value, error) {
+	return int64(id), nil
+}
+
+// Scan implements the database/sql.Scanner interface.
+// It supports scanning from int64, uint64, int, string, []byte, and nil.
+func (id *ID) Scan(src interface{}) error {
+	if id == nil {
+		return errors.New("sonyflake: Scan called on nil pointer")
+	}
+
+	switch v := src.(type) {
+	case nil:
+		*id = 0
+		return nil
+
+	case int64:
+		if v < 0 {
+			return fmt.Errorf("sonyflake: cannot scan negative value %d into ID", v)
+		}
+		*id = ID(v)
+		return nil
+
+	case uint64:
+		*id = ID(v)
+		return nil
+
+	case int:
+		if v < 0 {
+			return fmt.Errorf("sonyflake: cannot scan negative value %d into ID", v)
+		}
+		*id = ID(v)
+		return nil
+
+	case uint:
+		*id = ID(v)
+		return nil
+
+	case int32:
+		if v < 0 {
+			return fmt.Errorf("sonyflake: cannot scan negative value %d into ID", v)
+		}
+		*id = ID(v)
+		return nil
+
+	case uint32:
+		*id = ID(v)
+		return nil
+
+	case int16:
+		if v < 0 {
+			return fmt.Errorf("sonyflake: cannot scan negative value %d into ID", v)
+		}
+		*id = ID(v)
+		return nil
+
+	case uint16:
+		*id = ID(v)
+		return nil
+
+	case int8:
+		if v < 0 {
+			return fmt.Errorf("sonyflake: cannot scan negative value %d into ID", v)
+		}
+		*id = ID(v)
+		return nil
+
+	case uint8:
+		*id = ID(v)
+		return nil
+
+	case string:
+		if v == "" {
+			*id = 0
+			return nil
+		}
+		n, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return fmt.Errorf("sonyflake: cannot scan string %q into ID: %w", v, err)
+		}
+		*id = ID(n)
+		return nil
+
+	case []byte:
+		if len(v) == 0 {
+			*id = 0
+			return nil
+		}
+		if n, err := strconv.ParseUint(string(v), 10, 64); err == nil {
+			*id = ID(n)
+			return nil
+		}
+		if len(v) == 8 {
+			*id = ID(binary.BigEndian.Uint64(v))
+			return nil
+		}
+		return fmt.Errorf("sonyflake: cannot scan byte slice of length %d into ID", len(v))
+
+	case ID:
+		*id = v
+		return nil
+
+	case *ID:
+		if v == nil {
+			*id = 0
+			return nil
+		}
+		*id = *v
+		return nil
+
+	default:
+		return fmt.Errorf("sonyflake: cannot scan type %T into ID", src)
 	}
 }
