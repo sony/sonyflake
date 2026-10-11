@@ -1,8 +1,12 @@
 package sonyflake
 
 import (
+	"database/sql"
+	"database/sql/driver"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"runtime"
 	"testing"
@@ -344,4 +348,363 @@ func TestCompose(t *testing.T) {
 	if parts["machine-id"] != uint64(machineID) {
 		t.Errorf("unexpected machine id: %d", parts["machine-id"])
 	}
+}
+
+func TestIDInterfaces(t *testing.T) {
+	var (
+		_ sql.Scanner   = (*ID)(nil)
+		_ driver.Valuer = ID(0)
+		_ sql.Scanner   = (*SonyflakeID)(nil)
+		_ driver.Valuer = SonyflakeID(0)
+	)
+}
+
+func TestIDValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       ID
+		expected driver.Value
+	}{
+		{
+			name:     "zero value",
+			id:       ID(0),
+			expected: int64(0),
+		},
+		{
+			name:     "standard id",
+			id:       ID(855693107),
+			expected: int64(855693107),
+		},
+		{
+			name:     "large id within 63 bits",
+			id:       ID(math.MaxInt64),
+			expected: int64(math.MaxInt64),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			val, err := tt.id.Value()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if val != tt.expected {
+				t.Fatalf("expected value %v (%T), got %v (%T)", tt.expected, tt.expected, val, val)
+			}
+		})
+	}
+
+	t.Run("from generated id", func(t *testing.T) {
+		genSF, err := New(Settings{})
+		if err != nil {
+			t.Fatalf("failed to create Sonyflake: %v", err)
+		}
+		rawID, err := genSF.NextID()
+		if err != nil {
+			t.Fatalf("failed to generate ID: %v", err)
+		}
+		val, err := ID(rawID).Value()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if val != int64(rawID) {
+			t.Fatalf("expected %d, got %v", int64(rawID), val)
+		}
+	})
+}
+
+func TestIDScanValid(t *testing.T) {
+	binaryID := make([]byte, 8)
+	binary.BigEndian.PutUint64(binaryID, 855693107)
+
+	tests := []struct {
+		name     string
+		src      interface{}
+		expected ID
+	}{
+		{
+			name:     "nil src",
+			src:      nil,
+			expected: 0,
+		},
+		{
+			name:     "int64 zero",
+			src:      int64(0),
+			expected: 0,
+		},
+		{
+			name:     "int64 positive",
+			src:      int64(855693107),
+			expected: 855693107,
+		},
+		{
+			name:     "uint64 zero",
+			src:      uint64(0),
+			expected: 0,
+		},
+		{
+			name:     "uint64 positive",
+			src:      uint64(855693107),
+			expected: 855693107,
+		},
+		{
+			name:     "int positive",
+			src:      int(855693107),
+			expected: 855693107,
+		},
+		{
+			name:     "uint positive",
+			src:      uint(855693107),
+			expected: 855693107,
+		},
+		{
+			name:     "int32 positive",
+			src:      int32(12345),
+			expected: 12345,
+		},
+		{
+			name:     "uint32 positive",
+			src:      uint32(12345),
+			expected: 12345,
+		},
+		{
+			name:     "int16 positive",
+			src:      int16(1234),
+			expected: 1234,
+		},
+		{
+			name:     "uint16 positive",
+			src:      uint16(1234),
+			expected: 1234,
+		},
+		{
+			name:     "int8 positive",
+			src:      int8(123),
+			expected: 123,
+		},
+		{
+			name:     "uint8 positive",
+			src:      uint8(123),
+			expected: 123,
+		},
+		{
+			name:     "empty string",
+			src:      "",
+			expected: 0,
+		},
+		{
+			name:     "valid decimal string",
+			src:      "855693107",
+			expected: 855693107,
+		},
+		{
+			name:     "empty byte slice",
+			src:      []byte{},
+			expected: 0,
+		},
+		{
+			name:     "decimal byte slice",
+			src:      []byte("855693107"),
+			expected: 855693107,
+		},
+		{
+			name:     "8-character decimal byte slice",
+			src:      []byte("12345678"),
+			expected: 12345678,
+		},
+		{
+			name:     "8-byte big-endian binary",
+			src:      binaryID,
+			expected: 855693107,
+		},
+		{
+			name:     "ID type direct",
+			src:      ID(855693107),
+			expected: 855693107,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var id ID
+			if err := id.Scan(tt.src); err != nil {
+				t.Fatalf("unexpected scan error: %v", err)
+			}
+			if id != tt.expected {
+				t.Fatalf("expected %d, got %d", tt.expected, id)
+			}
+		})
+	}
+
+	t.Run("pointer to ID src", func(t *testing.T) {
+		srcID := ID(999999)
+		var id ID
+		if err := id.Scan(&srcID); err != nil {
+			t.Fatalf("unexpected scan error: %v", err)
+		}
+		if id != srcID {
+			t.Fatalf("expected %d, got %d", srcID, id)
+		}
+
+		var nilID *ID
+		if err := id.Scan(nilID); err != nil {
+			t.Fatalf("unexpected scan error: %v", err)
+		}
+		if id != 0 {
+			t.Fatalf("expected 0, got %d", id)
+		}
+	})
+
+	t.Run("resets existing value when scanning nil", func(t *testing.T) {
+		id := ID(12345)
+		if err := id.Scan(nil); err != nil {
+			t.Fatalf("unexpected scan error: %v", err)
+		}
+		if id != 0 {
+			t.Fatalf("expected id to reset to 0, got %d", id)
+		}
+	})
+}
+
+func TestIDScanInvalid(t *testing.T) {
+	tests := []struct {
+		name string
+		src  interface{}
+	}{
+		{
+			name: "negative int64",
+			src:  int64(-1),
+		},
+		{
+			name: "negative int",
+			src:  int(-10),
+		},
+		{
+			name: "negative int32",
+			src:  int32(-100),
+		},
+		{
+			name: "negative int16",
+			src:  int16(-1000),
+		},
+		{
+			name: "negative int8",
+			src:  int8(-10),
+		},
+		{
+			name: "non-numeric string",
+			src:  "invalid-id",
+		},
+		{
+			name: "negative string",
+			src:  "-12345",
+		},
+		{
+			name: "float string",
+			src:  "123.45",
+		},
+		{
+			name: "overflow string",
+			src:  "18446744073709551616",
+		},
+		{
+			name: "non-numeric byte slice",
+			src:  []byte("invalid"),
+		},
+		{
+			name: "invalid length byte slice",
+			src:  []byte{1, 2, 3, 4},
+		},
+		{
+			name: "float64 unsupported",
+			src:  float64(123.45),
+		},
+		{
+			name: "bool unsupported",
+			src:  true,
+		},
+		{
+			name: "struct unsupported",
+			src:  struct{}{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var id ID
+			if err := id.Scan(tt.src); err == nil {
+				t.Fatalf("expected error scanning %v (%T), got nil", tt.src, tt.src)
+			}
+		})
+	}
+
+	t.Run("nil pointer receiver returns error", func(t *testing.T) {
+		var id *ID
+		if err := id.Scan(int64(123)); err == nil {
+			t.Fatal("expected error on nil pointer receiver, got nil")
+		}
+	})
+}
+
+func TestIDHelpers(t *testing.T) {
+	const testRawID uint64 = 855693107
+	id := ID(testRawID)
+
+	if id.String() != "855693107" {
+		t.Fatalf("unexpected String(): %s", id.String())
+	}
+	if id.Int64() != int64(testRawID) {
+		t.Fatalf("unexpected Int64(): %d", id.Int64())
+	}
+	if id.Uint64() != testRawID {
+		t.Fatalf("unexpected Uint64(): %d", id.Uint64())
+	}
+	if id.ElapsedTime() != ElapsedTime(testRawID) {
+		t.Fatalf("unexpected ElapsedTime(): %v", id.ElapsedTime())
+	}
+	if id.SequenceNumber() != SequenceNumber(testRawID) {
+		t.Fatalf("unexpected SequenceNumber(): %d", id.SequenceNumber())
+	}
+	if id.MachineID() != MachineID(testRawID) {
+		t.Fatalf("unexpected MachineID(): %d", id.MachineID())
+	}
+
+	parts := id.Decompose()
+	expectedParts := Decompose(testRawID)
+	for k, v := range expectedParts {
+		if parts[k] != v {
+			t.Fatalf("unexpected Decompose[%s]: want %d, got %d", k, v, parts[k])
+		}
+	}
+
+	t.Run("ParseID", func(t *testing.T) {
+		parsed, err := ParseID("855693107")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if parsed != id {
+			t.Fatalf("expected %d, got %d", id, parsed)
+		}
+
+		if _, err := ParseID(""); err == nil {
+			t.Fatal("expected error for empty string, got nil")
+		}
+		if _, err := ParseID("not-a-number"); err == nil {
+			t.Fatal("expected error for non-number string, got nil")
+		}
+	})
+
+	t.Run("Sonyflake Next method", func(t *testing.T) {
+		genSF, err := New(Settings{})
+		if err != nil {
+			t.Fatalf("failed to create Sonyflake: %v", err)
+		}
+		next, err := genSF.Next()
+		if err != nil {
+			t.Fatalf("unexpected error from Next(): %v", err)
+		}
+		if next == 0 {
+			t.Fatal("expected non-zero ID from Next()")
+		}
+	})
 }
